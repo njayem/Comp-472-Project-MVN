@@ -639,8 +639,10 @@ def main():
     while True:
         print()
         print(game)
+        # append the current game board configuration to the output trace file
         game_board_config(file_path, game)
         winner = game.has_winner()
+        # append the winner to the output trace file
         if winner is not None:
             with open(file_path, 'a') as file:
                 file.write(f"-----------Game Over-----------\n")
