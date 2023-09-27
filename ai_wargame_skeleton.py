@@ -322,13 +322,7 @@ class Game:
         # A check to make sure a player does not move his opponent's unit
         if unit is None or unit.player != self.next_player:
             return False
-        """ if not self.is_valid_coord(coords.src) or not self.is_valid_coord(coords.dst):
-            return False
-        unit = self.get(coords.src)
-        # A check to make sure a player does not move his opponent's unit
-        if unit is None or unit.player != self.next_player:
-            return False
-        unit = self.get(coords.dst)
+        """ 
 If unit in combat 
 	If tech or virus 
 		Continue 
