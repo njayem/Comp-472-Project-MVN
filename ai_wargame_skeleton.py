@@ -354,6 +354,11 @@ If Move is valid distance (if true continue, false stop here)
         """Validate and perform a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!
         Implement the logic of the above 5 cases"""
         type_of_move = self.type_of_move(coords)
+        """ Check state of Game 
+	=> update unit life health 
+=> remove dead players if any  
+=> output move details to file """
+
         if type_of_move == "Move":
             #Implement the Move logic
             self.set(coords.dst,self.get(coords.src))
