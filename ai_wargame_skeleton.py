@@ -89,16 +89,21 @@ class Unit:
         """How much can this unit damage another unit."""
         amount = self.damage_table[self.type.value][target.type.value]
         if target.health - amount < 0:
+            #if the value is negative then return the target's CURRENT health to be subtracted later
+            #from the target's health to equal 0 and die eventually
             return target.health
+        #Otherwise return the amount of damage and subtract from CURRENT target health
         return amount
 
     def repair_amount(self, target: Unit) -> int:
         """How much can this unit repair another unit."""
         amount = self.repair_table[self.type.value][target.type.value]
         if target.health + amount > 9:
+            #if the value is >9 then return (9 - target's CURRENT health) to be added later
+            #to the target's health
             return 9 - target.health
+        #Otherwise return the amount of repair and add to CURRENT target health
         return amount
-
 ##############################################################################################################
 
 @dataclass(slots=True)
@@ -314,18 +319,57 @@ class Game:
         if not self.is_valid_coord(coords.src) or not self.is_valid_coord(coords.dst):
             return False
         unit = self.get(coords.src)
+        # A check to make sure a player does not move his opponent's unit
+        if unit is None or unit.player != self.next_player:
+            return False
+        """ if not self.is_valid_coord(coords.src) or not self.is_valid_coord(coords.dst):
+            return False
+        unit = self.get(coords.src)
+        # A check to make sure a player does not move his opponent's unit
         if unit is None or unit.player != self.next_player:
             return False
         unit = self.get(coords.dst)
+If unit in combat 
+	If tech or virus 
+		Continue 
+	Else false 
+If Move is valid direction 
+If Move is valid distance (if true continue, false stop here)
+
+        unit = self.get(coords.dst) """
         return (unit is None)
+    
+    def type_of_move(self, coords : CoordPair) -> str:
+        """Returns a String out of 5 possible strings:
+        1. Invalid
+        2. Move
+        3. Attack
+        4. Repair
+        5. Self-Destruct"""
+        valid = self.is_valid_move(coords)
+        if not valid:
+            return "Invalid"
 
     def perform_move(self, coords : CoordPair) -> Tuple[bool,str]:
-        """Validate and perform a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
-        if self.is_valid_move(coords):
+        """Validate and perform a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!
+        Implement the logic of the above 5 cases"""
+        type_of_move = self.type_of_move(coords)
+        if type_of_move == "Move":
+            #Implement the Move logic
             self.set(coords.dst,self.get(coords.src))
             self.set(coords.src,None)
             return (True,"")
-        return (False,"invalid move")
+        elif type_of_move == "Attack":
+            pass #Implement the attack logic
+            return (True,"")
+        elif type_of_move == "Repair":
+            pass #Implement the repair logic
+            return (True,"")
+        elif type_of_move == "Self-Destruct":
+            pass #Implement the self-destruct logic
+            return (True,"")
+        else:
+            return (False,"invalid move")
 
     def next_turn(self):
         """Transitions game to the next turn."""
@@ -527,26 +571,45 @@ class Game:
         except Exception as error:
             print(f"Broker error: {error}")
         return None
+    
+def get_user_input():
+    '''Prompt the user for input for each parameter'''
+    max_depth = int(input("Enter max depth: "))
+    max_time = float(input("Enter max time: "))
+    game_type = input("Enter game type (auto|attacker|defender|manual): ")
+    #broker = input("Enter broker (optional): ")
+    max_turns = int(input("Enter max turns: "))
+    return max_depth, max_time, game_type, max_turns
+
+def game_board_config(file_path: str, game: Game):
+    '''Print the current game board configuration'''
+    with open(file_path, 'a') as file:
+        file.write(str(game))
+        file.write("\n")
+
 
 ##############################################################################################################
 
 def main():
-    # parse command line arguments
-    parser = argparse.ArgumentParser(
-        prog='ai_wargame',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--max_depth', type=int, help='maximum search depth')
-    parser.add_argument('--max_time', type=float, help='maximum search time')
-    parser.add_argument('--game_type', type=str, default="manual", help='game type: auto|attacker|defender|manual')
-    parser.add_argument('--broker', type=str, help='play via a game broker')
-    args = parser.parse_args()
+    # Get user input
+    max_depth, max_time, game_type, max_turns = get_user_input()
+
+    # create the output trace file
+    file_path = f"gameTrace-b-t-{max_turns}.txt"
+    with open(file_path, 'w') as file:
+        file.write(f"The game parameters:\n"
+           f"The value of the timeout in seconds t: {max_time}\n"
+           f"The max number of turns: {max_turns}\n"
+           f"Alpha-beta is (on or off):\n"
+           f"The play modes: {game_type}\n"
+           f"The name of the heuristic (e0, e1 or e2):\n\n")
 
     # parse the game type
-    if args.game_type == "attacker":
+    if game_type == "attacker":
         game_type = GameType.AttackerVsComp
-    elif args.game_type == "defender":
+    elif game_type == "defender":
         game_type = GameType.CompVsDefender
-    elif args.game_type == "manual":
+    elif game_type == "manual":
         game_type = GameType.AttackerVsDefender
     else:
         game_type = GameType.CompVsComp
@@ -555,23 +618,33 @@ def main():
     options = Options(game_type=game_type)
 
     # override class defaults via command line options
-    if args.max_depth is not None:
-        options.max_depth = args.max_depth
-    if args.max_time is not None:
-        options.max_time = args.max_time
-    if args.broker is not None:
-        options.broker = args.broker
+    if max_depth is not None:
+        options.max_depth = max_depth
+    if max_time is not None:
+        options.max_time = max_time
+    #if broker is not None:
+    #    options.broker = broker
+    if max_turns is not None:
+        options.max_turns = max_turns
 
     # create a new game
     game = Game(options=options)
+
+    # append initial configuration to the output trace file
+    with open(file_path, 'a') as file:
+        file.write(f"-----------INITIAL CONFIGURATION-----------\n")
+  
 
     # the main game loop
     while True:
         print()
         print(game)
+        game_board_config(file_path, game)
         winner = game.has_winner()
         if winner is not None:
-            print(f"{winner.name} wins!")
+            with open(file_path, 'a') as file:
+                file.write(f"-----------Game Over-----------\n")
+                file.write(f"{winner} wins in {game.turns_played} turns\n")
             break
         if game.options.game_type == GameType.AttackerVsDefender:
             game.human_turn()
