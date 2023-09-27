@@ -323,14 +323,13 @@ class Game:
         if unit is None or unit.player != self.next_player:
             return False
         """ 
-If unit in combat 
-	If tech or virus 
-		Continue 
-	Else false 
-If Move is valid direction 
-If Move is valid distance (if true continue, false stop here)
-
-        unit = self.get(coords.dst) """
+            If unit in combat 
+	            If tech or virus 
+		            Continue 
+	        Else false 
+            If Move is valid direction 
+            If Move is valid distance (if true continue, false stop here)
+            unit = self.get(coords.dst) """
         return (unit is None)
     
     def type_of_move(self, coords : CoordPair) -> str:
@@ -339,7 +338,9 @@ If Move is valid distance (if true continue, false stop here)
         2. Move
         3. Attack
         4. Repair
-        5. Self-Destruct"""
+        5. Self-Destruct
+        
+        TO IMPLEMENT ALL ABOVE CASES"""
         valid = self.is_valid_move(coords)
         if not valid:
             return "Invalid"
@@ -349,9 +350,9 @@ If Move is valid distance (if true continue, false stop here)
         Implement the logic of the above 5 cases"""
         type_of_move = self.type_of_move(coords)
         """ Check state of Game 
-	=> update unit life health 
-=> remove dead players if any  
-=> output move details to file """
+	        => update unit life health 
+            => remove dead players if any  
+            => output move details to file """
 
         if type_of_move == "Move":
             #Implement the Move logic
