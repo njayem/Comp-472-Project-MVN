@@ -334,32 +334,38 @@ class Game:
             self.remove_dead(coord)
 
     def is_valid_distance(self, coords: CoordPair) -> bool:
+        """Checks to see that the two coordinates are directly above, below or beside one another"""
+        
+        # create empty list 
         adjacent_coordinates = list()
+        
+        # appeands surrounding coordinates (above, below or beside) to adjacent_coordinates
         for coord in coords.src.iter_adjacent():
             adjacent_coordinates.append(coord)
+            
+        # distance is valid if dst coordinate is in adjacent_coordinates
         return coords.dst in adjacent_coordinates
 
     # THERE'S (AT LEAST 1 ENEMY) ADJACENT TO OUR UNIT
     def is_in_combat(self, coords: CoordPair) -> bool:
+        """Checks to see if the unit at src coordinate is in combats"""
         unit = self.get(coords.src)
-        # A check to make sure if a unit is NOT (Tech = 1) or (Virus = 2)
-        if (unit.type.value != 1) and (unit.type.value != 2):
-            for adjacent_coord in coords.src.iter_adjacent():
-                adjacent_unit = self.get(adjacent_coord)
-                # A check to make sure an adjacent_unit (exists) + (is an opponent unit)
-                if (adjacent_unit is not None) and (adjacent_unit.player != unit.player):
-                    return True
+        for adjacent_coord in coords.src.iter_adjacent():
+            adjacent_unit = self.get(adjacent_coord)
+            # A check to make sure an adjacent_unit (exists) + (is an opponent unit)
+            if (adjacent_unit is not None) and (adjacent_unit.player != unit.player):
+                return True
         return False
 
     # Checks to see if the move being made is a repair and if it's valid
     def is_valid_repair(self, unit_src: Unit, unit_dst: Unit) -> bool:
         if unit_src is None or unit_dst is None:
             return False
-
+        
         if (unit_dst.player.value == unit_src.player.value) and ((unit_src.type.value == 0) or (unit_src.type.value == 1)):
             if (unit_dst.health < 9):
                 return True
-
+            
         return False
 
     def is_valid_movement_direction(self, unit_src: Unit, unit_dst: Unit, coords: CoordPair) -> bool:
@@ -378,11 +384,11 @@ class Game:
             if (coords.dst.col >= coords.src.col) and (coords.dst.row >= coords.src.row):
                 return True
         return False
-
+    
     def is_valid_move(self, coords: CoordPair) -> bool:
-        """Validate a move expressed as a CoordPair. TODO: DONE!!!!!!!!!!"""
+        """Validate a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
 
-        # A check to make sure the move is valid
+        # A check to make sure the coord is valid
         if not self.is_valid_coord(coords.src) or not self.is_valid_coord(coords.dst):
             return False
 
@@ -397,6 +403,7 @@ class Game:
         # A check for self-destruct
         if (unit_src is not None) and (unit_dst is not None) and (coords.src.col == coords.dst.col) and (coords.src.row == coords.dst.row):
             return True
+        
 
         # A check to make sure that the destination coordinate is an adjacent square
         if not self.is_valid_distance(coords):
@@ -405,15 +412,12 @@ class Game:
         ### ENGAGED IN COMBAT ###
         # A check to make sure if the current unit is ALLOWED TO MOVE WHILE IN COMBAT
         if self.is_in_combat(coords):
-            print("in combat")
             # Check if destination unit is (not empty) or is (not my unit) AKA I can attack it
             # Destination has no unit --> (Invalid Move)
-            if (unit_dst is None):
-                print("dst is None")
+            if (unit_dst is None) and ((unit_src.type.value != 1) and (unit_src.type.value != 2)):
                 return False
             # Destination is MY UNIT and is either (AI or TECH) --> (REPAIR)
-            elif (unit_dst.player.value == unit_src.player.value) and not self.is_valid_repair(unit_src, unit_dst):
-                print("not valid repair")
+            elif (unit_dst is not None and unit_src is not None) and (unit_dst.player.value == unit_src.player.value) and not self.is_valid_repair(unit_src, unit_dst):
                 return False
             # Destination is an OPPONENT UNIT --> (ATTACK)
             else:
@@ -431,7 +435,7 @@ class Game:
             return False
 
         return True
-
+    
     def type_of_move(self, unit_src, unit_dst, coords) -> str:
         """Returns a String out of 5 possible strings:
         1. Invalid Move    --> DONE!!
@@ -458,8 +462,36 @@ class Game:
             elif (unit_dst.player.value == unit_src.player.value):
                 return "Repair"           
         else:
-            return "Invalid Move"
+            return "Invalid"
 
+    def perform_self_destruct(self, unit_src: Unit, coords: CoordPair) -> Tuple[bool, str]:
+        total_damage = 0
+        self.mod_health(coords.src, -9)
+        
+        for surrounding_coord in coords.src.iter_range(1):
+            if surrounding_coord is not None: 
+                self.mod_health(surrounding_coord, -2)
+                self.remove_dead(surrounding_coord)
+                total_damage = total_damage + 2
+        return
+        
+    def perform_attack(self, unit_src: Unit, unit_dst: Unit, coords: CoordPair) -> Tuple[bool, str]:
+        damage = unit_src.damage_amount(unit_dst)
+        self.mod_health(coords.dst, -damage)
+        self.remove_dead(coords.dst)
+        
+        damage = unit_dst.damage_amount(unit_src)
+        self.mod_health(coords.src, -damage)
+        self.remove_dead(coords.src)
+        
+        return
+    
+    def perform_repair(self, unit_src: Unit, unit_dst: Unit, coords: CoordPair) -> Tuple[bool, str]:
+        repair = unit_src.repair_amount(unit_dst)
+        self.mod_health(coords.dst, repair)
+        
+        return
+        
     def perform_move(self, coords: CoordPair) -> Tuple[bool, str]:
         """Validate and perform a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!
         Implement the logic of the above 5 cases"""
@@ -471,25 +503,27 @@ class Game:
 	        => update unit life health 
             => remove dead players if any  
             => output move details to file """
-
+        
         if type_of_move == "Move":
             # Move logic
             self.set(coords.dst, self.get(coords.src))
             self.set(coords.src, None)
             return (True, "")
+        
         elif type_of_move == "Attack":
-            
-            pass  # Implement the attack logic
+            self.perform_attack(unit_src, unit_dst, coords)
             return (True, "")
+        
         elif type_of_move == "Self-Destruct":
-            pass  # Implement the self-destruct logic
+            self.perform_self_destruct(unit_src, coords)
             return (True, "")
+        
         elif type_of_move == "Repair":
-            pass  # Implement the repair logic
+            self.perform_repair(unit_src, unit_dst, coords)
             return (True, "")
         else:
             return (False, "Invalid Move")
-
+        
     def next_turn(self):
         """Transitions game to the next turn."""
         self.next_player = self.next_player.next()
