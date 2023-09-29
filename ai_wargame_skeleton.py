@@ -13,6 +13,7 @@ import requests
 MAX_HEURISTIC_SCORE = 2000000000
 MIN_HEURISTIC_SCORE = -2000000000
 
+file_path = None
 
 class UnitType(Enum):
     """Every unit type."""
@@ -240,7 +241,7 @@ class Options:
     max_turns: int | None = 100
     randomize_moves: bool = True
     broker: str | None = None
-
+    
 ##############################################################################################################
 
 
@@ -342,13 +343,13 @@ class Game:
         # appeands surrounding coordinates (above, below or beside) to adjacent_coordinates
         for coord in coords.src.iter_adjacent():
             adjacent_coordinates.append(coord)
-            
+        
         # distance is valid if dst coordinate is in adjacent_coordinates
         return coords.dst in adjacent_coordinates
 
-    # THERE'S (AT LEAST 1 ENEMY) ADJACENT TO OUR UNIT
+    
     def is_in_combat(self, coords: CoordPair) -> bool:
-        """Checks to see if the unit at src coordinate is in combats"""
+        """Checks to see if the unit at src coordinate is in combats --check to see if there's at least 1 enemy adjacent to unit at src"""
         unit = self.get(coords.src)
         for adjacent_coord in coords.src.iter_adjacent():
             adjacent_unit = self.get(adjacent_coord)
@@ -356,9 +357,10 @@ class Game:
             if (adjacent_unit is not None) and (adjacent_unit.player != unit.player):
                 return True
         return False
-
-    # Checks to see if the move being made is a repair and if it's valid
+    
     def is_valid_repair(self, unit_src: Unit, unit_dst: Unit) -> bool:
+        """Checks to see if the move being made is a repair and if it's valid"""
+        
         if unit_src is None or unit_dst is None:
             return False
         
@@ -696,6 +698,7 @@ class Game:
                     f"Broker error: status code: {r.status_code}, response: {r.json()}")
         except Exception as error:
             print(f"Broker error: {error}")
+            
 
     def get_move_from_broker(self) -> CoordPair | None:
         """Get a move from the game broker."""
@@ -731,12 +734,16 @@ class Game:
 
 def get_user_input():
     '''Prompt the user for input for each parameter'''
-    max_depth = int(input("Enter max depth: "))
-    max_time = float(input("Enter max time: "))
+    #max_depth = int(input("Enter max depth: "))
+    #max_time = float(input("Enter max time: "))
     game_type = input("Enter game type (auto|attacker|defender|manual): ")
     #broker = input("Enter broker (optional): ")
     max_turns = int(input("Enter max turns: "))
-    return max_depth, max_time, game_type, max_turns
+    
+    global file_path 
+    file_path= f"gameTrace-b-t-{max_turns}.txt"
+    
+    return game_type, max_turns
 
 
 def game_board_config(file_path: str, game: Game):
@@ -750,17 +757,18 @@ def game_board_config(file_path: str, game: Game):
 
 def main():
     # Get user input
-    max_depth, max_time, game_type, max_turns = get_user_input()
+    game_type, max_turns = get_user_input()
 
     # create the output trace file
-    file_path = f"gameTrace-b-t-{max_turns}.txt"
+    # file_path = f"gameTrace-b-t-{max_turns}.txt"
     with open(file_path, 'w') as file:
         file.write(f"The game parameters:\n"
-                   f"The value of the timeout in seconds t: {max_time}\n"
+                   #f"The value of the timeout in seconds t: {max_time}\n"
                    f"The max number of turns: {max_turns}\n"
-                   f"Alpha-beta is (on or off):\n"
-                   f"The play modes: {game_type}\n"
-                   f"The name of the heuristic (e0, e1 or e2):\n\n")
+                   #f"Alpha-beta is (on or off):\n"
+                   f"The play mode: {game_type}\n"
+                   #f"The name of the heuristic (e0, e1 or e2):\n\n"
+                   )
 
     # parse the game type
     if game_type == "attacker":
@@ -776,10 +784,10 @@ def main():
     options = Options(game_type=game_type)
 
     # override class defaults via command line options
-    if max_depth is not None:
-        options.max_depth = max_depth
-    if max_time is not None:
-        options.max_time = max_time
+    #if max_depth is not None:
+    #    options.max_depth = max_depth
+    #if max_time is not None:
+    #    options.max_time = max_time
     # if broker is not None:
     #    options.broker = broker
     if max_turns is not None:
@@ -802,8 +810,8 @@ def main():
         # append the winner to the output trace file
         if winner is not None:
             with open(file_path, 'a') as file:
-                file.write(f"-----------Game Over-----------\n")
-                file.write(f"{winner} wins in {game.turns_played} turns\n")
+                file.write(f"----------------Game Over----------------\n")
+                file.write(f"{winner.name} wins in {game.turns_played} turns\n")
             break
         if game.options.game_type == GameType.AttackerVsDefender:
             game.human_turn()
