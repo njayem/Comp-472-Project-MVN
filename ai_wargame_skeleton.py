@@ -91,6 +91,7 @@ class Unit:
 
     def damage_amount(self, target: Unit) -> int:
         """How much can this unit damage another unit."""
+        # TODO Use this line in the output trace to display the damage amount regardless of current health!!!!
         amount = self.damage_table[self.type.value][target.type.value]
         if target.health - amount < 0:
             # if the value is negative then return the target's CURRENT health to be subtracted later
@@ -101,6 +102,7 @@ class Unit:
 
     def repair_amount(self, target: Unit) -> int:
         """How much can this unit repair another unit."""
+        # TODO Use this line in the output trace to display the repair amount regardless of current health!!!!
         amount = self.repair_table[self.type.value][target.type.value]
         if target.health + amount > 9:
             # if the value is >9 then return (9 - target's CURRENT health) to be added later
@@ -435,8 +437,8 @@ class Game:
         1. Invalid Move    --> DONE!!
         2. Move            --> DONE!!
         3. Attack          --> DONE!!
-        4. Self-Destruct   --> DONE!!!     ****TO TEST AI***** 
-        5. Repair          --> DONE!!!     ****TO TEST!!!******
+        4. Self-Destruct   --> DONE!! 
+        5. Repair          --> DONE!!  
 
         TO IMPLEMENT ALL ABOVE CASES"""
 
