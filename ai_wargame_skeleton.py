@@ -94,6 +94,10 @@ class Unit:
         """How much can this unit damage another unit."""
         # TODO Use this line in the output trace to display the damage amount regardless of current health!!!!
         amount = self.damage_table[self.type.value][target.type.value]
+        
+        with open(file_path, 'a') as file:
+            file.write(f"{amount}")
+            
         if target.health - amount < 0:
             # if the value is negative then return the target's CURRENT health to be subtracted later
             # from the target's health to equal 0 and die eventually
@@ -105,6 +109,10 @@ class Unit:
         """How much can this unit repair another unit."""
         # TODO Use this line in the output trace to display the repair amount regardless of current health!!!!
         amount = self.repair_table[self.type.value][target.type.value]
+        
+        with open(file_path, 'a') as file:
+            file.write(f"{amount}")
+        
         if target.health + amount > 9:
             # if the value is >9 then return (9 - target's CURRENT health) to be added later
             # to the target's health
@@ -471,27 +479,46 @@ class Game:
         self.mod_health(coords.src, -9)
         
         for surrounding_coord in coords.src.iter_range(1):
-            if surrounding_coord is not None: 
+            if self.get(surrounding_coord) is not None: 
                 self.mod_health(surrounding_coord, -2)
                 self.remove_dead(surrounding_coord)
                 total_damage = total_damage + 2
+        
+        with open(file_path, 'a') as file:
+            file.write(f"self-destruct at {coords.src} \nself-destructed for {total_damage} total damage\n\n")
         return
         
     def perform_attack(self, unit_src: Unit, unit_dst: Unit, coords: CoordPair) -> Tuple[bool, str]:
-        damage = unit_src.damage_amount(unit_dst)
-        self.mod_health(coords.dst, -damage)
-        self.remove_dead(coords.dst)
+        
+        with open(file_path, 'a') as file:
+            file.write(f"attack from {coords.src} to {coords.dst} \ncombat damage: to source = ")
         
         damage = unit_dst.damage_amount(unit_src)
         self.mod_health(coords.src, -damage)
         self.remove_dead(coords.src)
         
+        with open(file_path, 'a') as file:
+            file.write(f", to target = ")
+        
+        damage = unit_src.damage_amount(unit_dst)
+        self.mod_health(coords.dst, -damage)
+        self.remove_dead(coords.dst)
+        
+        with open(file_path, 'a') as file:
+            file.write("\n\n")
+        
+        
         return
     
     def perform_repair(self, unit_src: Unit, unit_dst: Unit, coords: CoordPair) -> Tuple[bool, str]:
+        with open(file_path, 'a') as file:
+            file.write(f"repair from {coords.src} to {coords.dst} \nrepaired ")
+            
         repair = unit_src.repair_amount(unit_dst)
         self.mod_health(coords.dst, repair)
         
+        with open(file_path, 'a') as file:
+            file.write(" health points \n\n")
         return
         
     def perform_move(self, coords: CoordPair) -> Tuple[bool, str]:
@@ -501,6 +528,10 @@ class Game:
         unit_src = self.get(coords.src)
         unit_dst = self.get(coords.dst)
         type_of_move = self.type_of_move(unit_src, unit_dst, coords)
+        
+        if unit_src is not None: 
+            with open(file_path, 'a') as file:
+                file.write(f"{unit_src.player.name}: ")
         """ Check state of Game 
 	        => update unit life health 
             => remove dead players if any  
@@ -510,6 +541,10 @@ class Game:
             # Move logic
             self.set(coords.dst, self.get(coords.src))
             self.set(coords.src, None)
+            
+            with open(file_path, 'a') as file:
+                file.write(f"move from {coords.src} to {coords.dst} \n\n")
+            
             return (True, "")
         
         elif type_of_move == "Attack":
@@ -524,6 +559,8 @@ class Game:
             self.perform_repair(unit_src, unit_dst, coords)
             return (True, "")
         else:
+            with open(file_path, 'a') as file:
+                file.write(f"Invalid Move! \n\n")
             return (False, "Invalid Move")
         
     def next_turn(self):
@@ -760,7 +797,6 @@ def main():
     game_type, max_turns = get_user_input()
 
     # create the output trace file
-    # file_path = f"gameTrace-b-t-{max_turns}.txt"
     with open(file_path, 'w') as file:
         file.write(f"The game parameters:\n"
                    #f"The value of the timeout in seconds t: {max_time}\n"
