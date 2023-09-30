@@ -1,3 +1,5 @@
+# Comp-472-Project-MVN
+
 from __future__ import annotations
 import argparse
 import copy
@@ -14,6 +16,7 @@ MAX_HEURISTIC_SCORE = 2000000000
 MIN_HEURISTIC_SCORE = -2000000000
 
 file_path = None
+
 
 class UnitType(Enum):
     """Every unit type."""
@@ -92,12 +95,13 @@ class Unit:
 
     def damage_amount(self, target: Unit) -> int:
         """How much can this unit damage another unit."""
-        # TODO Use this line in the output trace to display the damage amount regardless of current health!!!!
-        amount = self.damage_table[self.type.value][target.type.value]
         
+        # calculate damage value 
+        amount = self.damage_table[self.type.value][target.type.value]
+
         with open(file_path, 'a') as file:
             file.write(f"{amount}")
-            
+
         if target.health - amount < 0:
             # if the value is negative then return the target's CURRENT health to be subtracted later
             # from the target's health to equal 0 and die eventually
@@ -107,12 +111,13 @@ class Unit:
 
     def repair_amount(self, target: Unit) -> int:
         """How much can this unit repair another unit."""
-        # TODO Use this line in the output trace to display the repair amount regardless of current health!!!!
-        amount = self.repair_table[self.type.value][target.type.value]
         
+        # calculate repair value 
+        amount = self.repair_table[self.type.value][target.type.value]
+
         with open(file_path, 'a') as file:
             file.write(f"{amount}")
-        
+
         if target.health + amount > 9:
             # if the value is >9 then return (9 - target's CURRENT health) to be added later
             # to the target's health
@@ -249,7 +254,7 @@ class Options:
     max_turns: int | None = 100
     randomize_moves: bool = True
     broker: str | None = None
-    
+
 ##############################################################################################################
 
 
@@ -343,42 +348,48 @@ class Game:
             self.remove_dead(coord)
 
     def is_valid_distance(self, coords: CoordPair) -> bool:
-        """Checks to see that the two coordinates are directly above, below or beside one another"""
-        
-        # create empty list 
+        """Checks to see that the two coordinates are directly above, below or beside one another i.e. Distance = 1"""
+
+        # create empty list
         adjacent_coordinates = list()
-        
-        # appeands surrounding coordinates (above, below or beside) to adjacent_coordinates
+
+        # appends surrounding coordinates (above, below or beside) to adjacent_coordinates
         for coord in coords.src.iter_adjacent():
             adjacent_coordinates.append(coord)
-        
+
         # distance is valid if dst coordinate is in adjacent_coordinates
         return coords.dst in adjacent_coordinates
 
-    
     def is_in_combat(self, coords: CoordPair) -> bool:
-        """Checks to see if the unit at src coordinate is in combats --check to see if there's at least 1 enemy adjacent to unit at src"""
+        """Checks to see if the unit at src coordinate is in combat --check to see if there's at least 1 enemy adjacent to unit at src"""
         unit = self.get(coords.src)
+
+        # iterate through adjacent coordinates
         for adjacent_coord in coords.src.iter_adjacent():
             adjacent_unit = self.get(adjacent_coord)
             # A check to make sure an adjacent_unit (exists) + (is an opponent unit)
             if (adjacent_unit is not None) and (adjacent_unit.player != unit.player):
                 return True
         return False
-    
+
     def is_valid_repair(self, unit_src: Unit, unit_dst: Unit) -> bool:
         """Checks to see if the move being made is a repair and if it's valid"""
-        
         if unit_src is None or unit_dst is None:
             return False
         
+        # only AI (0) and Tech (1) can repair
         if (unit_dst.player.value == unit_src.player.value) and ((unit_src.type.value == 0) or (unit_src.type.value == 1)):
             if (unit_dst.health < 9):
                 return True
-            
+
         return False
 
     def is_valid_movement_direction(self, unit_src: Unit, unit_dst: Unit, coords: CoordPair) -> bool:
+        """Checks to see if the unit is moving in its allowed direction
+        Tech and Virus units can move up, down, left and right.
+        Remaining attackers may only move up and left. 
+        Remaining defenders may only move down and right."""
+
         if unit_dst is not None:
             return False
         # If the unit is (1 = Tech) OR (2 = Virus)
@@ -394,15 +405,15 @@ class Game:
             if (coords.dst.col >= coords.src.col) and (coords.dst.row >= coords.src.row):
                 return True
         return False
-    
+
     def is_valid_move(self, coords: CoordPair) -> bool:
-        """Validate a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
+        """Validate a move expressed as a CoordPair."""
 
         # A check to make sure the coord is valid
         if not self.is_valid_coord(coords.src) or not self.is_valid_coord(coords.dst):
             return False
 
-        # Get unit at source
+        # Get unit at source and at destination 
         unit_src = self.get(coords.src)
         unit_dst = self.get(coords.dst)
 
@@ -413,7 +424,6 @@ class Game:
         # A check for self-destruct
         if (unit_src is not None) and (unit_dst is not None) and (coords.src.col == coords.dst.col) and (coords.src.row == coords.dst.row):
             return True
-        
 
         # A check to make sure that the destination coordinate is an adjacent square
         if not self.is_valid_distance(coords):
@@ -445,16 +455,15 @@ class Game:
             return False
 
         return True
-    
-    def type_of_move(self, unit_src, unit_dst, coords) -> str:
-        """Returns a String out of 5 possible strings:
-        1. Invalid Move    --> DONE!!
-        2. Move            --> DONE!!
-        3. Attack          --> DONE!!
-        4. Self-Destruct   --> DONE!! 
-        5. Repair          --> DONE!!  
 
-        TO IMPLEMENT ALL ABOVE CASES"""
+    def type_of_move(self, unit_src, unit_dst, coords) -> str:
+        """Returns a string corresponding to the type of move being performed by the src unit:
+        1. Invalid Move    
+        2. Move            
+        3. Attack          
+        4. Self-Destruct    
+        5. Repair    
+        """
 
         # A check to make sure the move is valid
         valid = self.is_valid_move(coords)
@@ -470,99 +479,109 @@ class Game:
                 return "Self-Destruct"
             # REPAIR
             elif (unit_dst.player.value == unit_src.player.value):
-                return "Repair"           
+                return "Repair"
         else:
             return "Invalid"
 
     def perform_self_destruct(self, unit_src: Unit, coords: CoordPair) -> Tuple[bool, str]:
+        """Kills off the unit performing the self-destruct, reduces the health of the 
+        surrounding units by 2 and removes any dead units from the board."""
         total_damage = 0
-        self.mod_health(coords.src, -9)
         
+        #kill off src unit 
+        self.mod_health(coords.src, -9)
+
+        # reduces the health of the surrounding units by 2 
         for surrounding_coord in coords.src.iter_range(1):
-            if self.get(surrounding_coord) is not None: 
+            if self.get(surrounding_coord) is not None:
                 self.mod_health(surrounding_coord, -2)
                 self.remove_dead(surrounding_coord)
                 total_damage = total_damage + 2
-        
+
         with open(file_path, 'a') as file:
-            file.write(f"self-destruct at {coords.src} \nself-destructed for {total_damage} total damage\n\n")
+            file.write(
+                f"self-destruct at {coords.src} \nself-destructed for {total_damage} total damage\n")
         return
-        
+
     def perform_attack(self, unit_src: Unit, unit_dst: Unit, coords: CoordPair) -> Tuple[bool, str]:
-        
+        """Allows the src unit to attack the target unit, decreasing the health of both units by a 
+        predetermined value defined in damage_table. If one of the units dies, it gets removed from the board."""
         with open(file_path, 'a') as file:
-            file.write(f"attack from {coords.src} to {coords.dst} \ncombat damage: to source = ")
-        
+            file.write(
+                f"attack from {coords.src} to {coords.dst} \ncombat damage: to source = ")
+
+        # calculate damage and modify health value 
         damage = unit_dst.damage_amount(unit_src)
         self.mod_health(coords.src, -damage)
         self.remove_dead(coords.src)
-        
+
         with open(file_path, 'a') as file:
             file.write(f", to target = ")
-        
+
+        # calculate damage and modify health value 
         damage = unit_src.damage_amount(unit_dst)
         self.mod_health(coords.dst, -damage)
         self.remove_dead(coords.dst)
-        
+
         with open(file_path, 'a') as file:
-            file.write("\n\n")
-        
-        
+            file.write("\n")
+
         return
-    
+
     def perform_repair(self, unit_src: Unit, unit_dst: Unit, coords: CoordPair) -> Tuple[bool, str]:
+        """Allows the src unit to repair the target unit, increasing the health of the target unit by a
+        predetermined value defined in repair_table. """
         with open(file_path, 'a') as file:
             file.write(f"repair from {coords.src} to {coords.dst} \nrepaired ")
-            
+
+        # calculate repair and modify health value
         repair = unit_src.repair_amount(unit_dst)
         self.mod_health(coords.dst, repair)
-        
+
         with open(file_path, 'a') as file:
-            file.write(" health points \n\n")
+            file.write(" health points \n")
         return
-        
+
     def perform_move(self, coords: CoordPair) -> Tuple[bool, str]:
-        """Validate and perform a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!
-        Implement the logic of the above 5 cases"""
+        """Validate and perform a move expressed as a CoordPair."""
         # Get unit at source
         unit_src = self.get(coords.src)
         unit_dst = self.get(coords.dst)
+
+        # Get type of move 
         type_of_move = self.type_of_move(unit_src, unit_dst, coords)
-        
-        if unit_src is not None: 
+
+        if unit_src is not None:
             with open(file_path, 'a') as file:
-                file.write(f"{unit_src.player.name}: ")
-        """ Check state of Game 
-	        => update unit life health 
-            => remove dead players if any  
-            => output move details to file """
-        
+                file.write(f"\n\n\n{unit_src.player.name}: ")
+
+        # once type of move to be played is determined, perform the move 
         if type_of_move == "Move":
             # Move logic
             self.set(coords.dst, self.get(coords.src))
             self.set(coords.src, None)
-            
+
             with open(file_path, 'a') as file:
-                file.write(f"move from {coords.src} to {coords.dst} \n\n")
-            
+                file.write(f"move from {coords.src} to {coords.dst}\n")
+
             return (True, "")
-        
+
         elif type_of_move == "Attack":
             self.perform_attack(unit_src, unit_dst, coords)
             return (True, "")
-        
+
         elif type_of_move == "Self-Destruct":
             self.perform_self_destruct(unit_src, coords)
             return (True, "")
-        
+
         elif type_of_move == "Repair":
             self.perform_repair(unit_src, unit_dst, coords)
             return (True, "")
         else:
             with open(file_path, 'a') as file:
-                file.write(f"Invalid Move! \n\n")
+                file.write(f"Invalid Move!\n")
             return (False, "Invalid Move")
-        
+
     def next_turn(self):
         """Transitions game to the next turn."""
         self.next_player = self.next_player.next()
@@ -668,6 +687,9 @@ class Game:
         """Check if the game is over and returns winner"""
         if self.options.max_turns is not None and self.turns_played >= self.options.max_turns:
             return Player.Defender
+        # gives win to defender in the case that both AIs die in the same move (Only happens when AI self-destructs and kills opponent AI)
+        elif (not self._attacker_has_ai) and (not self._defender_has_ai):
+            return Player.Defender
         elif self._attacker_has_ai:
             if self._defender_has_ai:
                 return None
@@ -735,7 +757,6 @@ class Game:
                     f"Broker error: status code: {r.status_code}, response: {r.json()}")
         except Exception as error:
             print(f"Broker error: {error}")
-            
 
     def get_move_from_broker(self) -> CoordPair | None:
         """Get a move from the game broker."""
@@ -776,10 +797,11 @@ def get_user_input():
     game_type = input("Enter game type (auto|attacker|defender|manual): ")
     #broker = input("Enter broker (optional): ")
     max_turns = int(input("Enter max turns: "))
-    
-    global file_path 
-    file_path= f"gameTrace-b-t-{max_turns}.txt"
-    
+
+    # create the name for the output file
+    global file_path
+    file_path = f"gameTrace-b-t-{max_turns}.txt"
+
     return game_type, max_turns
 
 
@@ -820,9 +842,9 @@ def main():
     options = Options(game_type=game_type)
 
     # override class defaults via command line options
-    #if max_depth is not None:
+    # if max_depth is not None:
     #    options.max_depth = max_depth
-    #if max_time is not None:
+    # if max_time is not None:
     #    options.max_time = max_time
     # if broker is not None:
     #    options.broker = broker
@@ -847,7 +869,8 @@ def main():
         if winner is not None:
             with open(file_path, 'a') as file:
                 file.write(f"----------------Game Over----------------\n")
-                file.write(f"{winner.name} wins in {game.turns_played} turns\n")
+                file.write(
+                    f"{winner.name} wins in {game.turns_played} turns\n")
             break
         if game.options.game_type == GameType.AttackerVsDefender:
             game.human_turn()
