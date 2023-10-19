@@ -10,6 +10,7 @@ from time import sleep
 from typing import Tuple, TypeVar, Type, Iterable, ClassVar
 import random
 import requests
+import math
 
 # maximum and minimum values for our heuristic scores (usually represents an end of game condition)
 MAX_HEURISTIC_SCORE = 2000000000
@@ -261,9 +262,11 @@ class Options:
 @dataclass(slots=True)
 class Stats:
     """Representation of the global game statistics."""
-    evaluations_per_depth: dict[int, int] = field(default_factory=dict)
     total_seconds: float = 0.0
-
+    cumulative_evals: int = 0
+    cumulative_evals_by_depth: dict[int, int] = field(default_factory=dict)
+    cumulative_percentage_evals_by_depth: float = 0.0
+    average_branching_factor: float = 0.0
 ##############################################################################################################
 
 
@@ -271,7 +274,7 @@ class Stats:
 class Game:
     """Representation of the game state."""
     board: list[list[Unit | None]] = field(default_factory=list)
-    next_player: Player = Player.Attacker
+    next_player: Player = Player.Attacker   # Current Player is next_player
     turns_played: int = 0
     options: Options = field(default_factory=Options)
     stats: Stats = field(default_factory=Stats)
@@ -726,26 +729,81 @@ class Game:
         move_candidates = list(self.move_candidates())
         random.shuffle(move_candidates)
         if len(move_candidates) > 0:
-            return (0, move_candidates[0], 1)
+            return (self.heuristic_score_e_0(), move_candidates[0])
         else:
-            return (0, None, 0)
+            return (self.heuristic_score_e_0(), None)
 
+    # E0 = (3VP1 + 3TP1 + 3FP1 + 3PP1 + 9999AIP1) − (3VP2 + 3TP2 + 3FP2 + 3PP2 + 9999AIP2)
+    # VP i = nb of Virus of Player i
+    # TP i = nb of Tech of Player i
+    # FP i = nb of Firewall of Player i
+    # PP i = nb of Program of Player i
+    # AIP i = nb of AI of Player i
+
+    def heuristic_score_e_0(self) -> int:
+        """Returns the heuristic score for current unit configuration"""
+        # AI = 0, Tech = 1, Virus = 2, Program = 3, Firewall = 4
+        VP1 = TP1 = FP1 = PP1 = AIP1 = VP2 = TP2 = FP2 = PP2 = AIP2 = 0
+    
+        for (_, unit) in self.player_units(self.next_player):
+            if unit.type.value == 0:
+                AIP1 += 1
+            elif unit.type.value == 1:
+                TP1 += 1
+            elif unit.type.value == 2:
+                VP1 += 1
+            elif unit.type.value == 3:
+                PP1 += 1
+            elif unit.type.value == 4:
+                FP1 += 1
+        
+        for (_, unit) in self.player_units(self.next_player.next()):
+            if unit.type.value == 0:
+                AIP2 += 1
+            elif unit.type.value == 1:
+                TP2 += 1
+            elif unit.type.value == 2:
+                VP2 += 1
+            elif unit.type.value == 3:
+                PP2 += 1
+            elif unit.type.value == 4:
+                FP2 += 1
+                
+        heuristic_score = (3*VP1 + 3*TP1 + 3*FP1 + 3*PP1 + 9999*AIP1) - (3*VP2 + 3*TP2 + 3*FP2 + 3*PP2 + 9999*AIP2) 
+        return heuristic_score
+   
+    
+    def is_maximizing_player(self, player: Player) -> bool:
+        """Check if the player is the maximizing player."""
+        
+        # if Human is Attacker, maximizing player = Defender (AI)
+        if self.options.game_type == GameType.AttackerVsComp:
+            return player != Player.Attacker
+        
+        # if Human is Defender, maximizing player = Attacker (AI)
+        elif self.options.game_type == GameType.CompVsDefender:
+            return player != Player.Defender
+        
+        # if AI vs AI, maximizing player = current player
+        else:
+            return True
+    
     def suggest_move(self) -> CoordPair | None:
         """Suggest the next move using minimax alpha beta. TODO: REPLACE RANDOM_MOVE WITH PROPER GAME LOGIC!!!"""
         start_time = datetime.now()
-        (score, move, avg_depth) = self.random_move()
+        (score, move) = self.random_move()
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
-        print(f"Heuristic score: {score}")
-        print(f"Average recursive depth: {avg_depth:0.1f}")
+        print(f"Heuristic score: {self.heuristic_score_e_0()}")
+        # print(f"Average recursive depth: {avg_depth:0.1f}")
         print(f"Evals per depth: ", end='')
-        for k in sorted(self.stats.evaluations_per_depth.keys()):
-            print(f"{k}:{self.stats.evaluations_per_depth[k]} ", end='')
+        for k in sorted(self.stats.cumulative_evals_by_depth.keys()):
+            print(f"{k}:{self.stats.cumulative_evals_by_depth[k]} ", end='')
         print()
-        total_evals = sum(self.stats.evaluations_per_depth.values())
-        if self.stats.total_seconds > 0:
-            print(
-                f"Eval perf.: {total_evals/self.stats.total_seconds/1000:0.1f}k/s")
+        total_evals = sum(self.stats.cumulative_evals_by_depth.values())
+        # if self.stats.total_seconds > 0:
+        #     print(
+        #         f"Eval perf.: {total_evals/self.stats.total_seconds/1000:0.1f}k/s")
         print(f"Elapsed time: {elapsed_seconds:0.1f}s")
         return move
 
