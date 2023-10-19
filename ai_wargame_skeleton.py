@@ -802,7 +802,7 @@ class Game:
         return False
     
     def distance_from_nearest_opponent(self, src, unit) -> int:
-        """Returns the distance from the nearest opponent"""
+        """Returns the distance from the nearest opponent (Manhattan distance)."""
         min_distance = 1000
         for coord in CoordPair.from_dim(self.options.dim).iter_rectangle():
             coord_unit = self.get(coord)
