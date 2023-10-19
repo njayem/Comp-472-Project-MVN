@@ -729,9 +729,9 @@ class Game:
         move_candidates = list(self.move_candidates())
         random.shuffle(move_candidates)
         if len(move_candidates) > 0:
-            return (self.heuristic_score_e0(), move_candidates[0])
+            return (self.heuristic_score_e1(), move_candidates[0])
         else:
-            return (self.heuristic_score_e0(), None)
+            return (self.heuristic_score_e1(), None)
 
 
     def heuristic_score_e0(self) -> int:
@@ -772,46 +772,109 @@ class Game:
                 PP2 += 1
             elif unit.type.value == 4:
                 FP2 += 1
-
-        return (3*VP1 + 3*TP1 + 3*FP1 + 3*PP1 + 9999*AIP1) - (3*VP2 + 3*TP2 + 3*FP2 + 3*PP2 + 9999*AIP2)
+                
+        heuristic_score = (3*VP1 + 3*TP1 + 3*FP1 + 3*PP1 + 9999*AIP1) - (3*VP2 + 3*TP2 + 3*FP2 + 3*PP2 + 9999*AIP2)
+        
+        if heuristic_score > MAX_HEURISTIC_SCORE:
+            heuristic_score = MAX_HEURISTIC_SCORE
+        if heuristic_score < MIN_HEURISTIC_SCORE:
+            heuristic_score = MIN_HEURISTIC_SCORE
+        
+        return heuristic_score
    
    
+    def can_strike_to_kill(self, src, unit) -> bool:
+        """Checks to see if the unit at src coordinate can strike to kill an enemy unit"""
+        for coord in src.iter_adjacent():
+            coord_unit = self.get(coord)
+            if coord_unit is not None and coord_unit.player != unit.player:
+                if unit.damage_amount(coord_unit) >= coord_unit.health:
+                    return True
+        return False
+    
+    def can_get_killed(self, src, unit) -> bool:
+        """Checks to see if the unit at src coordinate can get killed by an enemy unit"""
+        for coord in src.iter_adjacent():
+            coord_unit = self.get(coord)
+            if coord_unit is not None and coord_unit.player != unit.player:
+                if coord_unit.damage_amount(unit) >= unit.health:
+                    return True
+        return False
+    
+    def distance_from_nearest_opponent(self, src, unit) -> int:
+        """Returns the distance from the nearest opponent"""
+        min_distance = 1000
+        for coord in CoordPair.from_dim(self.options.dim).iter_rectangle():
+            coord_unit = self.get(coord)
+            if coord_unit is not None and coord_unit.player != unit.player:
+                manhattan_distance = abs(src.row - coord.row) + abs(src.col - coord.col)
+                if manhattan_distance < min_distance:
+                    min_distance = manhattan_distance
+        return min_distance
+        
     def heuristic_score_e1(self) -> int:
         """Returns the heuristic score for current unit configuration"""
-        # AI = 0, Tech = 1, Virus = 2, Program = 3, Firewall = 4
+        # (Coord(row=2, col=4), Unit(player=<Player.Attacker: 0>, type=<UnitType.Program: 3>, health=7))        
+        # values of pieces differ by impotance: AI = 100. Tech = 80, Virus = 100, Program = 30, Firewall = 50
         
-        # 1, 1, 2, 3, 5, 8, 13, 21, 34, 55
-        # change values of pieces => AI = 9999, Tech = 3, Virus = 3, Program = 3, Firewall = 1
         # initialize variables 
-        VP1 = TP1 = FP1 = PP1 = AIP1 = VP2 = TP2 = FP2 = PP2 = AIP2 = 0
+        heuristic_score = 0
+        cumulative_health = 0
+        cumulative_opponent_health = 0
 
-        # iterate through all current player units and count the number of each type of unit
-        for (_, unit) in self.player_units(self.next_player):
-            if unit.type.value == 0:
-                AIP1 += 1
-            elif unit.type.value == 1:
-                TP1 += 1
-            elif unit.type.value == 2:
-                VP1 += 1
-            elif unit.type.value == 3:
-                PP1 += 1
-            elif unit.type.value == 4:
-                FP1 += 1
+        # iterate through all current player units
+        for (src, unit) in self.player_units(self.next_player):
+            cumulative_health += unit.health
+            
+            if unit.type.value == 0: # AI
+                
+                # of current player AI can die, avoid this move
+                if self.can_get_killed(src, unit):
+                    return MIN_HEURISTIC_SCORE
+                
+                heuristic_score += 100
+            elif unit.type.value == 1: # Tech
+                heuristic_score += 80
+            elif unit.type.value == 2: # Virus
+                heuristic_score += 100
+            elif unit.type.value == 3: # Program
+                heuristic_score += 30
+            elif unit.type.value == 4: # Firewall
+                heuristic_score += 50
         
-        # iterate through all next player units and count the number of each type of unit
-        for (_, unit) in self.player_units(self.next_player.next()):
-            if unit.type.value == 0:
-                AIP2 += 1
-            elif unit.type.value == 1:
-                TP2 += 1
-            elif unit.type.value == 2:
-                VP2 += 1
-            elif unit.type.value == 3:
-                PP2 += 1
-            elif unit.type.value == 4:
-                FP2 += 1
+        # iterate through all opponent player units 
+        for (src, unit) in self.player_units(self.next_player.next()):
+            cumulative_opponent_health += unit.health
+            
+            if unit.type.value == 0: # Opp AI
+                
+                # if oppenent's AI can die, this is a good move
+                if self.can_get_killed(src, unit):
+                    return MAX_HEURISTIC_SCORE
+                
+                heuristic_score -= 100
+            elif unit.type.value == 1: # Opp Tech
+                heuristic_score -= 80
+            elif unit.type.value == 2: # Opp Virus
+                heuristic_score -= 100
+            elif unit.type.value == 3: # Opp Program
+                heuristic_score -= 30
+            elif unit.type.value == 4: # Opp Firewall
+                heuristic_score -= 50
+        
+        
+        #if current player is left with a cumulative health advantage, this is a good move
+        if cumulative_health > cumulative_opponent_health:
+            heuristic_score += 500
+        else:
+            heuristic_score -= 500
+            
+        if heuristic_score > MAX_HEURISTIC_SCORE:
+            heuristic_score = MAX_HEURISTIC_SCORE
+        if heuristic_score < MIN_HEURISTIC_SCORE:
+            heuristic_score = MIN_HEURISTIC_SCORE
 
-        return (VP1 + TP1 + FP1 + PP1 + AIP1) - (VP2 + TP2 + FP2 + PP2 + AIP2)    
+        return heuristic_score
     
     def is_maximizing_player(self, player: Player) -> bool:
         """Check if the player is the maximizing player."""
@@ -834,7 +897,7 @@ class Game:
         (score, move) = self.random_move()
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
-        print(f"Heuristic score: {self.heuristic_score_e0()}")
+        print(f"Heuristic score: {self.heuristic_score_e1()}")
         # print(f"Average recursive depth: {avg_depth:0.1f}")
         print(f"Cumulative evals by depth", end='')
         for k in sorted(self.stats.cumulative_evals_by_depth.keys()):
@@ -998,6 +1061,7 @@ def main():
         winner = game.has_winner()
         # append the winner to the output trace file
         if winner is not None:
+            print(f"----------------Game Over----------------\n\n{winner.name} wins in {game.turns_played} turns\n")
             with open(file_path, 'a') as file:
                 file.write(f"----------------Game Over----------------\n")
                 file.write(
