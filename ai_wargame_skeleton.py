@@ -729,9 +729,9 @@ class Game:
         move_candidates = list(self.move_candidates())
         random.shuffle(move_candidates)
         if len(move_candidates) > 0:
-            return (self.heuristic_score_e_0(), move_candidates[0])
+            return (self.heuristic_score_e0(), move_candidates[0])
         else:
-            return (self.heuristic_score_e_0(), None)
+            return (self.heuristic_score_e0(), None)
 
     # E0 = (3VP1 + 3TP1 + 3FP1 + 3PP1 + 9999AIP1) − (3VP2 + 3TP2 + 3FP2 + 3PP2 + 9999AIP2)
     # VP i = nb of Virus of Player i
@@ -740,7 +740,7 @@ class Game:
     # PP i = nb of Program of Player i
     # AIP i = nb of AI of Player i
 
-    def heuristic_score_e_0(self) -> int:
+    def heuristic_score_e0(self) -> int:
         """Returns the heuristic score for current unit configuration"""
         # AI = 0, Tech = 1, Virus = 2, Program = 3, Firewall = 4
         VP1 = TP1 = FP1 = PP1 = AIP1 = VP2 = TP2 = FP2 = PP2 = AIP2 = 0
@@ -794,7 +794,7 @@ class Game:
         (score, move) = self.random_move()
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
-        print(f"Heuristic score: {self.heuristic_score_e_0()}")
+        print(f"Heuristic score: {self.heuristic_score_e0()}")
         # print(f"Average recursive depth: {avg_depth:0.1f}")
         print(f"Evals per depth: ", end='')
         for k in sorted(self.stats.cumulative_evals_by_depth.keys()):
