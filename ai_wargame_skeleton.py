@@ -833,14 +833,15 @@ class Game:
                     return MIN_HEURISTIC_SCORE
                 
                 heuristic_score += 100
+                
             elif unit.type.value == 1: # Tech
                 heuristic_score += 80
             elif unit.type.value == 2: # Virus
                 heuristic_score += 100
             elif unit.type.value == 3: # Program
-                heuristic_score += 30
-            elif unit.type.value == 4: # Firewall
                 heuristic_score += 50
+            elif unit.type.value == 4: # Firewall
+                heuristic_score += 30
         
         # iterate through all opponent player units 
         for (src, unit) in self.player_units(self.next_player.next()):
@@ -858,9 +859,9 @@ class Game:
             elif unit.type.value == 2: # Opp Virus
                 heuristic_score -= 100
             elif unit.type.value == 3: # Opp Program
-                heuristic_score -= 30
-            elif unit.type.value == 4: # Opp Firewall
                 heuristic_score -= 50
+            elif unit.type.value == 4: # Opp Firewall
+                heuristic_score -= 30
         
         
         #if current player is left with a cumulative health advantage, this is a good move
