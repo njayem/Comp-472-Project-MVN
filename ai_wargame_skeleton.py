@@ -1071,7 +1071,7 @@ def game_board_config(file_path: str, game: Game):
 
 def main():
     # Get user input
-    game_type, max_time, max_depth, max_turns, heuristic, alpha_beta_option= get_user_input()
+    game_type, max_time, max_depth, max_turns, heuristic, alpha_beta_option = get_user_input()
 
     # create the output trace file
     with open(file_path, 'w') as file:
