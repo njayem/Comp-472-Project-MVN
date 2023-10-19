@@ -255,6 +255,8 @@ class Options:
     max_turns: int | None = 100
     randomize_moves: bool = True
     broker: str | None = None
+    heuristic: str | None = "e0"
+    alpha_beta_option: bool | None = False
 
 ##############################################################################################################
 
@@ -729,9 +731,9 @@ class Game:
         move_candidates = list(self.move_candidates())
         random.shuffle(move_candidates)
         if len(move_candidates) > 0:
-            return (self.heuristic_score_e1(), move_candidates[0])
+            return (self.heuristic_score_e2(), move_candidates[0])
         else:
-            return (self.heuristic_score_e1(), None)
+            return (self.heuristic_score_e2(), None)
 
 
     def heuristic_score_e0(self) -> int:
@@ -811,64 +813,70 @@ class Game:
                 if manhattan_distance < min_distance:
                     min_distance = manhattan_distance
         return min_distance
+    
+    def multiplier(self, src, unit) -> int:
+        """"Returns an int by which the value should be multiplied if the unit is in an offensive postion."""
+        multiplier = 0
+        can_get_killed = self.can_get_killed(src, unit)
+        
+        # if the unit can strike to kill an opponent, this is a good move
+        if self.can_strike_to_kill(src, unit):
+            multiplier += 8
+        
+         # if the unit can get killed by an opponent, this is a bad move
+        if can_get_killed:
+            multiplier -= 8
+            
+        # if the unit can take damage from an opponent and still live, this is okay 
+        if self.distance_from_nearest_opponent(src, unit) == 1 and not can_get_killed:
+            multiplier += 5
+        
+        return multiplier
         
     def heuristic_score_e1(self) -> int:
-        """Returns the heuristic score for current unit configuration"""
+        """Returns the heuristic score for current unit configuration. Offensive Heuristic."""
         # (Coord(row=2, col=4), Unit(player=<Player.Attacker: 0>, type=<UnitType.Program: 3>, health=7))        
-        # values of pieces differ by impotance: AI = 100. Tech = 80, Virus = 100, Program = 30, Firewall = 50
+        # values of pieces differ by impotance: AI = 100. Tech = 80, Virus = 100, Program = 50, Firewall = 30
         
         # initialize variables 
         heuristic_score = 0
-        cumulative_health = 0
-        cumulative_opponent_health = 0
 
         # iterate through all current player units
         for (src, unit) in self.player_units(self.next_player):
-            cumulative_health += unit.health
             
             if unit.type.value == 0: # AI
-                
-                # of current player AI can die, avoid this move
+                # if current player AI can die, avoid this move
                 if self.can_get_killed(src, unit):
                     return MIN_HEURISTIC_SCORE
+                heuristic_score += 100 + 100*self.multiplier(src, unit)
                 
-                heuristic_score += 100
+            elif unit.type.value == 1 or unit.type.value == 2: # Tech or Virus 
+                heuristic_score += 80 + 80*self.multiplier(src, unit)
                 
-            elif unit.type.value == 1: # Tech
-                heuristic_score += 80
-            elif unit.type.value == 2: # Virus
-                heuristic_score += 100
             elif unit.type.value == 3: # Program
-                heuristic_score += 50
+                heuristic_score += 50 + 50*self.multiplier(src, unit)
+                
             elif unit.type.value == 4: # Firewall
-                heuristic_score += 30
+                heuristic_score += 30 + 30*self.multiplier(src, unit)
         
         # iterate through all opponent player units 
         for (src, unit) in self.player_units(self.next_player.next()):
-            cumulative_opponent_health += unit.health
             
             if unit.type.value == 0: # Opp AI
-                
-                # if oppenent's AI can die, this is a good move
+                # if opponent's AI can die, this is a good move
                 if self.can_get_killed(src, unit):
                     return MAX_HEURISTIC_SCORE
+                heuristic_score -= 100 + 100*self.multiplier(src, unit)
                 
-                heuristic_score -= 100
-            elif unit.type.value == 1: # Opp Tech
-                heuristic_score -= 80
-            elif unit.type.value == 2: # Opp Virus
-                heuristic_score -= 100
+            elif unit.type.value == 1 or unit.type.value == 2: # Tech or Virus 
+                heuristic_score -= 80 + 80*self.multiplier(src, unit)
+                
             elif unit.type.value == 3: # Opp Program
-                heuristic_score -= 50
+                heuristic_score -= 50 + 50*self.multiplier(src, unit)
+                
             elif unit.type.value == 4: # Opp Firewall
-                heuristic_score -= 30
+                heuristic_score -= 30 + 30*self.multiplier(src, unit)
         
-        
-        #if current player is left with a cumulative health advantage, this is a good move
-        if cumulative_health > cumulative_opponent_health:
-            heuristic_score += 500
-        else:
-            heuristic_score -= 500
             
         if heuristic_score > MAX_HEURISTIC_SCORE:
             heuristic_score = MAX_HEURISTIC_SCORE
@@ -877,6 +885,56 @@ class Game:
 
         return heuristic_score
     
+    def heuristic_score_e2(self) -> int:
+        """Returns the heuristic score for current unit configuration. Health-based Heuristic."""
+        # initialize variables 
+        heuristic_score = 0
+
+        # iterate through all current player units
+        for (src, unit) in self.player_units(self.next_player):
+            
+            if unit.type.value == 0: # AI
+                # of current player AI can die, avoid this move
+                if self.can_get_killed(src, unit):
+                    return MIN_HEURISTIC_SCORE
+                heuristic_score += 100*unit.health
+                
+            elif unit.type.value == 1 or unit.type.value == 2: # Tech or Virus 
+                heuristic_score += 80*unit.health
+                
+            elif unit.type.value == 3: # Program
+                heuristic_score += 50*unit.health
+                
+            elif unit.type.value == 4: # Firewall
+                heuristic_score += 30*unit.health
+        
+        # iterate through all opponent player units 
+        for (src, unit) in self.player_units(self.next_player.next()):
+            
+            if unit.type.value == 0: # Opp AI
+                # if oppenent's AI can die, this is a good move
+                if self.can_get_killed(src, unit):
+                    return MAX_HEURISTIC_SCORE
+                heuristic_score -= 100*unit.health
+                
+            elif unit.type.value == 1 or unit.type.value == 2: # Tech or Virus 
+                heuristic_score -= 80*unit.health
+                
+            elif unit.type.value == 3: # Opp Program
+                heuristic_score -= 50*unit.health
+                
+            elif unit.type.value == 4: # Opp Firewall
+                heuristic_score -= 30*unit.health
+        
+            
+        if heuristic_score > MAX_HEURISTIC_SCORE:
+            heuristic_score = MAX_HEURISTIC_SCORE
+        if heuristic_score < MIN_HEURISTIC_SCORE:
+            heuristic_score = MIN_HEURISTIC_SCORE
+
+        return heuristic_score
+        
+        
     def is_maximizing_player(self, player: Player) -> bool:
         """Check if the player is the maximizing player."""
         
@@ -898,7 +956,7 @@ class Game:
         (score, move) = self.random_move()
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
-        print(f"Heuristic score: {self.heuristic_score_e1()}")
+        print(f"Heuristic score: {self.heuristic_score_e2()}")
         # print(f"Average recursive depth: {avg_depth:0.1f}")
         print(f"Cumulative evals by depth", end='')
         for k in sorted(self.stats.cumulative_evals_by_depth.keys()):
@@ -987,17 +1045,19 @@ class Game:
 
 def get_user_input():
     '''Prompt the user for input for each parameter'''
-    #max_depth = int(input("Enter max depth: "))
-    #max_time = float(input("Enter max time: "))
+    max_depth = int(input("Enter max depth: "))
+    max_time = float(input("Enter max time in seconds: "))
     game_type = input("Enter game type (auto|attacker|defender|manual): ")
     #broker = input("Enter broker (optional): ")
     max_turns = int(input("Enter max turns: "))
+    heuristic = input("Enter heuristic name (e0|e1|e2): ")
+    alpha_beta_option = input("Enter alpha-beta option (on|off): ")
 
     # create the name for the output file
     global file_path
     file_path = f"gameTrace-b-t-{max_turns}.txt"
 
-    return game_type, max_turns
+    return game_type, max_time, max_depth, max_turns, heuristic, alpha_beta_option
 
 
 def game_board_config(file_path: str, game: Game):
@@ -1011,16 +1071,16 @@ def game_board_config(file_path: str, game: Game):
 
 def main():
     # Get user input
-    game_type, max_turns = get_user_input()
+    game_type, max_time, max_depth, max_turns, heuristic, alpha_beta_option= get_user_input()
 
     # create the output trace file
     with open(file_path, 'w') as file:
         file.write(f"The game parameters:\n"
-                   #f"The value of the timeout in seconds t: {max_time}\n"
+                   f"The value of the timeout in seconds t: {max_time}\n"
                    f"The max number of turns: {max_turns}\n"
-                   #f"Alpha-beta is (on or off):\n"
+                   f"Alpha-beta is (on or off): {alpha_beta_option}\n"
                    f"The play mode: {game_type}\n"
-                   #f"The name of the heuristic (e0, e1 or e2):\n\n"
+                   f"The name of the heuristic: {heuristic}\n\n"
                    )
 
     # parse the game type
@@ -1037,14 +1097,22 @@ def main():
     options = Options(game_type=game_type)
 
     # override class defaults via command line options
-    # if max_depth is not None:
-    #    options.max_depth = max_depth
-    # if max_time is not None:
-    #    options.max_time = max_time
+    if max_depth is not None:
+       options.max_depth = max_depth
+    if max_time is not None:
+       options.max_time = max_time
     # if broker is not None:
     #    options.broker = broker
     if max_turns is not None:
         options.max_turns = max_turns
+    if heuristic is not None:
+        options.heuristic = heuristic.lower().strip()
+        
+    if alpha_beta_option is not None:
+       if alpha_beta_option.lower().strip() == "on": 
+            options.alpha_beta_option = True
+       else: 
+           options.alpha_beta_option = False
 
     # create a new game
     game = Game(options=options)
