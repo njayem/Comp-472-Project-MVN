@@ -3,7 +3,7 @@
 from __future__ import annotations
 import argparse
 import copy
-from datetime import datetime
+import datetime
 from enum import Enum
 from dataclasses import dataclass, field
 from time import sleep
@@ -949,11 +949,72 @@ class Game:
         # if AI vs AI, maximizing player = current player
         else:
             return True
+        
+    def evaluate_heuristic(self):
+        """Evaluates the heuristic score based on the heuristic option selected"""
+        if self.options.heuristic == "e2":
+            return self.heuristic_score_e2()
+        elif self.options.heuristic == "e1":
+            return self.heuristic_score_e1()
+        else:
+            return self.heuristic_score_e0()
+
+######################################################## BUGGED CODE -_- NEEDS TO BE FIXED ########################################################        
+    def alpha_beta(self, max_depth, start_time, maximizing_player, alpha, beta):
+        """ Alpha Beta Pruning Algorithm"""
+        
+        current_best_move = None 
+        
+        if max_depth == 0:
+            return self.evaluate_heuristic()
+        
+        time_difference = datetime.datetime.now().second - start_time.second
+        if  time_difference > self.options.max_time: 
+            return self.evaluate_heuristic()
+
+        if self.has_winner():
+            return self.evaluate_heuristic()
+        
+        if maximizing_player:
+            # APLHA PRUNING
+            max_evaluated_heuristic_score = MIN_HEURISTIC_SCORE
+            for move in self.move_candidates():
+                game_copy = self.clone () # create mock / new board off the original board
+                game_copy.perform_move(move) # create mock / new perform move
+                evaluated_heuristic_score = game_copy.alpha_beta(max_depth - 1, start_time, False, alpha, beta)
+                if evaluated_heuristic_score > max_evaluated_heuristic_score: 
+                    max_evaluated_heuristic_score = evaluated_heuristic_score
+                    current_best_move = move    
+                alpha = max(alpha, max_evaluated_heuristic_score)
+                if beta <= alpha:
+                    break
+            return max_evaluated_heuristic_score, current_best_move
+        else:
+            # BETA PRUNING
+            min_evaluated_heuristic_score = MAX_HEURISTIC_SCORE
+            for move in self.move_candidates():
+                game_copy = self.clone () # create mock / new board off the original board
+                game_copy.perform_move(move) # create mock / new perform move
+                evaluated_heuristic_score = game_copy.alpha_beta(max_depth - 1, start_time, True, alpha, beta)
+                if evaluated_heuristic_score < min_evaluated_heuristic_score:
+                    min_evaluated_heuristic_score = evaluated_heuristic_score
+                    current_best_move = move
+                beta = min(beta, min_evaluated_heuristic_score)
+                if beta <= alpha:
+                    break
+            return min_evaluated_heuristic_score, current_best_move
     
     def suggest_move(self) -> CoordPair | None:
         """Suggest the next move using minimax alpha beta. TODO: REPLACE RANDOM_MOVE WITH PROPER GAME LOGIC!!!"""
-        start_time = datetime.now()
-        (score, move) = self.random_move()
+        start_time = datetime.datetime.now()
+        if self.options.alpha_beta_option:
+            ###Call ALPHABETA PRUNING
+            maximizing_player = self.is_maximizing_player(self.next_player)
+            (score, move) = self.alpha_beta(self.options.max_depth, start_time, maximizing_player, float('-inf'), float('inf'))
+            # (score, move) = self.random_move()
+        else: 
+            ###Call MINIMAX
+            pass
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
         print(f"Heuristic score: {self.heuristic_score_e2()}")
