@@ -959,7 +959,7 @@ class Game:
         else:
             return self.heuristic_score_e0()
 
-######################################################## BUGGED CODE -_- NEEDS TO BE FIXED ########################################################        
+######################################################## BUGGED CODE --- NEEDS TO BE FIXED ########################################################        
     def alpha_beta(self, max_depth, start_time, maximizing_player, alpha, beta):
         """ Alpha Beta Pruning Algorithm"""
         
