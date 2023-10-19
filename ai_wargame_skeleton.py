@@ -733,18 +733,21 @@ class Game:
         else:
             return (self.heuristic_score_e0(), None)
 
-    # E0 = (3VP1 + 3TP1 + 3FP1 + 3PP1 + 9999AIP1) − (3VP2 + 3TP2 + 3FP2 + 3PP2 + 9999AIP2)
-    # VP i = nb of Virus of Player i
-    # TP i = nb of Tech of Player i
-    # FP i = nb of Firewall of Player i
-    # PP i = nb of Program of Player i
-    # AIP i = nb of AI of Player i
 
     def heuristic_score_e0(self) -> int:
         """Returns the heuristic score for current unit configuration"""
         # AI = 0, Tech = 1, Virus = 2, Program = 3, Firewall = 4
+        # E0 = (3VP1 + 3TP1 + 3FP1 + 3PP1 + 9999AIP1) − (3VP2 + 3TP2 + 3FP2 + 3PP2 + 9999AIP2)
+        # VPi = nb of Virus of Player i
+        # TPi = nb of Tech of Player i
+        # FPi = nb of Firewall of Player i
+        # PPi = nb of Program of Player i
+        # AIPi = nb of AI of Player i
+        
+        # initialize variables 
         VP1 = TP1 = FP1 = PP1 = AIP1 = VP2 = TP2 = FP2 = PP2 = AIP2 = 0
-    
+
+        # iterate through all current player units and count the number of each type of unit
         for (_, unit) in self.player_units(self.next_player):
             if unit.type.value == 0:
                 AIP1 += 1
@@ -757,6 +760,7 @@ class Game:
             elif unit.type.value == 4:
                 FP1 += 1
         
+        # iterate through all next player units and count the number of each type of unit
         for (_, unit) in self.player_units(self.next_player.next()):
             if unit.type.value == 0:
                 AIP2 += 1
@@ -768,10 +772,46 @@ class Game:
                 PP2 += 1
             elif unit.type.value == 4:
                 FP2 += 1
-                
-        heuristic_score = (3*VP1 + 3*TP1 + 3*FP1 + 3*PP1 + 9999*AIP1) - (3*VP2 + 3*TP2 + 3*FP2 + 3*PP2 + 9999*AIP2) 
-        return heuristic_score
+
+        return (3*VP1 + 3*TP1 + 3*FP1 + 3*PP1 + 9999*AIP1) - (3*VP2 + 3*TP2 + 3*FP2 + 3*PP2 + 9999*AIP2)
    
+   
+    def heuristic_score_e1(self) -> int:
+        """Returns the heuristic score for current unit configuration"""
+        # AI = 0, Tech = 1, Virus = 2, Program = 3, Firewall = 4
+        
+        # 1, 1, 2, 3, 5, 8, 13, 21, 34, 55
+        # change values of pieces => AI = 9999, Tech = 3, Virus = 3, Program = 3, Firewall = 1
+        # initialize variables 
+        VP1 = TP1 = FP1 = PP1 = AIP1 = VP2 = TP2 = FP2 = PP2 = AIP2 = 0
+
+        # iterate through all current player units and count the number of each type of unit
+        for (_, unit) in self.player_units(self.next_player):
+            if unit.type.value == 0:
+                AIP1 += 1
+            elif unit.type.value == 1:
+                TP1 += 1
+            elif unit.type.value == 2:
+                VP1 += 1
+            elif unit.type.value == 3:
+                PP1 += 1
+            elif unit.type.value == 4:
+                FP1 += 1
+        
+        # iterate through all next player units and count the number of each type of unit
+        for (_, unit) in self.player_units(self.next_player.next()):
+            if unit.type.value == 0:
+                AIP2 += 1
+            elif unit.type.value == 1:
+                TP2 += 1
+            elif unit.type.value == 2:
+                VP2 += 1
+            elif unit.type.value == 3:
+                PP2 += 1
+            elif unit.type.value == 4:
+                FP2 += 1
+
+        return (VP1 + TP1 + FP1 + PP1 + AIP1) - (VP2 + TP2 + FP2 + PP2 + AIP2)    
     
     def is_maximizing_player(self, player: Player) -> bool:
         """Check if the player is the maximizing player."""
@@ -796,16 +836,38 @@ class Game:
         self.stats.total_seconds += elapsed_seconds
         print(f"Heuristic score: {self.heuristic_score_e0()}")
         # print(f"Average recursive depth: {avg_depth:0.1f}")
-        print(f"Evals per depth: ", end='')
+        print(f"Cumulative evals by depth", end='')
         for k in sorted(self.stats.cumulative_evals_by_depth.keys()):
             print(f"{k}:{self.stats.cumulative_evals_by_depth[k]} ", end='')
-        print()
-        total_evals = sum(self.stats.cumulative_evals_by_depth.values())
+        # total_evals = sum(self.stats.cumulative_evals_by_depth.values())
         # if self.stats.total_seconds > 0:
         #     print(
         #         f"Eval perf.: {total_evals/self.stats.total_seconds/1000:0.1f}k/s")
-        print(f"Elapsed time: {elapsed_seconds:0.1f}s")
+        print(f"Cumulative evals: {self.stats.cumulative_evals}")
+        print(f"Cumulative % evals by depth: {self.stats.cumulative_percentage_evals_by_depth}")
+        print(f"Average branching factor: {self.stats.average_branching_factor}")
+        print()
+        print(f"Time for this action: {elapsed_seconds:0.1f}s")
         return move
+    
+    #  def suggest_move(self) -> CoordPair | None:
+    #     """Suggest the next move using minimax alpha beta. TODO: REPLACE RANDOM_MOVE WITH PROPER GAME LOGIC!!!"""
+    #     start_time = datetime.now()
+    #     (score, move, avg_depth) = self.random_move()
+    #     elapsed_seconds = (datetime.now() - start_time).total_seconds()
+    #     self.stats.total_seconds += elapsed_seconds
+    #     print(f"Heuristic score: {score}")
+    #     print(f"Average recursive depth: {avg_depth:0.1f}")
+    #     print(f"Evals per depth: ", end='')
+    #     for k in sorted(self.stats.evaluations_per_depth.keys()):
+    #         print(f"{k}:{self.stats.evaluations_per_depth[k]} ", end='')
+    #     print()
+    #     total_evals = sum(self.stats.evaluations_per_depth.values())
+    #     if self.stats.total_seconds > 0:
+    #         print(
+    #             f"Eval perf.: {total_evals/self.stats.total_seconds/1000:0.1f}k/s")
+    #     print(f"Elapsed time: {elapsed_seconds:0.1f}s")
+    #     return move
 
     def post_move_to_broker(self, move: CoordPair):
         """Send a move to the game broker."""
