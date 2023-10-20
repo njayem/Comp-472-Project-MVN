@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import copy
 import datetime
+import time
 from enum import Enum
 from dataclasses import dataclass, field
 from time import sleep
@@ -1011,8 +1012,7 @@ class Game:
     #     if depth == 0:
     #         return game_copy.evaluate_heuristic()
         
-    #     time_difference = datetime.datetime.now().second - start_time.second
-    #     if  time_difference > self.options.max_time: 
+    #     if time.time() - start_time > self.options.max_time:
     #         return self.evaluate_heuristic()
         
     #     if game_copy.has_winner():
@@ -1046,9 +1046,7 @@ class Game:
     #     best_evaluated_move = None
     #     best_evaluation = MIN_HEURISTIC_SCORE
         
-    #     # player_max = self.is_maximizing_player(self.next_player)
-        
-    #     start_time = datetime.datetime.now()
+    #     start_time = time.time()
     #     for move in self.move_candidates():
     #         evaluation = self.minimax(move, self.options.max_depth, start_time, True)
     #         if evaluation is not None and evaluation > best_evaluation:
@@ -1064,8 +1062,7 @@ class Game:
     #     if depth == 0:
     #         return game_copy.evaluate_heuristic()
         
-    #     time_difference = datetime.datetime.now().second - start_time.second
-    #     if  time_difference > self.options.max_time: 
+    #     if time.time() - start_time > self.options.max_time:
     #         return self.evaluate_heuristic()
         
     #     if game_copy.has_winner():
@@ -1106,8 +1103,7 @@ class Game:
     #     best_evaluated_move = None
     #     best_evaluation = MIN_HEURISTIC_SCORE
         
-    #     # player_max = self.is_maximizing_player(self.next_player)
-    #     start_time = datetime.datetime.now()
+    #     start_time = time.time()
     #     for move in self.move_candidates():
     #         evaluation = self.alpha_beta(move, self.options.max_depth, start_time, float('-inf'), float('inf'), True)
     #         if evaluation is not None and evaluation > best_evaluation:
