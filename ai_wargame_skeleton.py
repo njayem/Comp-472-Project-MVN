@@ -961,165 +961,175 @@ class Game:
             return self.heuristic_score_e0()
 
 ######################################################## BUGGED CODE --- NEEDS TO BE FIXED ########################################################        
-    def alpha_beta(self, max_depth, start_time, maximizing_player, alpha, beta):
-        """ Alpha Beta Pruning Algorithm"""
+    # def alpha_beta(self, max_depth, start_time, maximizing_player, alpha, beta):
+    #     """ Alpha Beta Pruning Algorithm"""
         
-        current_best_move = None 
+    #     current_best_move = None 
         
-        if max_depth == 0:
-            return self.evaluate_heuristic()
+    #     if max_depth == 0:
+    #         return self.evaluate_heuristic()
         
-        time_difference = datetime.datetime.now().second - start_time.second
-        if  time_difference > self.options.max_time: 
-            return self.evaluate_heuristic()
+    #     time_difference = datetime.datetime.now().second - start_time.second
+    #     if  time_difference > self.options.max_time: 
+    #         return self.evaluate_heuristic()
 
-        if self.has_winner():
+    #     if self.has_winner():
+    #         return self.evaluate_heuristic()
+        
+    #     if maximizing_player:
+    #         # APLHA PRUNING
+    #         max_evaluated_heuristic_score = MIN_HEURISTIC_SCORE
+    #         for move in self.move_candidates():
+    #             game_copy = self.clone () # create mock / new board off the original board
+    #             game_copy.perform_move(move) # create mock / new perform move
+    #             evaluated_heuristic_score = game_copy.alpha_beta(max_depth - 1, start_time, False, alpha, beta)
+    #             if evaluated_heuristic_score > max_evaluated_heuristic_score: 
+    #                 max_evaluated_heuristic_score = evaluated_heuristic_score
+    #                 current_best_move = move    
+    #             alpha = max(alpha, max_evaluated_heuristic_score)
+    #             if beta <= alpha:
+    #                 break
+    #         return max_evaluated_heuristic_score, current_best_move
+    #     else:
+    #         # BETA PRUNING
+    #         min_evaluated_heuristic_score = MAX_HEURISTIC_SCORE
+    #         for move in self.move_candidates():
+    #             game_copy = self.clone () # create mock / new board off the original board
+    #             game_copy.perform_move(move) # create mock / new perform move
+    #             evaluated_heuristic_score = game_copy.alpha_beta(max_depth - 1, start_time, True, alpha, beta)
+    #             if evaluated_heuristic_score < min_evaluated_heuristic_score:
+    #                 min_evaluated_heuristic_score = evaluated_heuristic_score
+    #                 current_best_move = move
+    #             beta = min(beta, min_evaluated_heuristic_score)
+    #             if beta <= alpha:
+    #                 break
+    #         return min_evaluated_heuristic_score, current_best_move
+    
+    def minimax(self, move, depth, start_time, maximizing_player) -> int:
+        game_copy = self.clone ()
+        game_copy.perform_move(move)
+        
+        if depth == 0:
+            return game_copy.evaluate_heuristic()
+        
+        if time.time() - start_time > self.options.max_time:
             return self.evaluate_heuristic()
+        
+        if game_copy.has_winner():
+            return game_copy.evaluate_heuristic()
         
         if maximizing_player:
-            # APLHA PRUNING
             max_evaluated_heuristic_score = MIN_HEURISTIC_SCORE
-            for move in self.move_candidates():
-                game_copy = self.clone () # create mock / new board off the original board
-                game_copy.perform_move(move) # create mock / new perform move
-                evaluated_heuristic_score = game_copy.alpha_beta(max_depth - 1, start_time, False, alpha, beta)
-                if evaluated_heuristic_score > max_evaluated_heuristic_score: 
-                    max_evaluated_heuristic_score = evaluated_heuristic_score
-                    current_best_move = move    
-                alpha = max(alpha, max_evaluated_heuristic_score)
-                if beta <= alpha:
-                    break
-            return max_evaluated_heuristic_score, current_best_move
+            for move in game_copy.move_candidates():
+                
+                evaluated_heuristic_score = game_copy.minimax(move, depth - 1, start_time, False)
+                
+                if (evaluated_heuristic_score is None) or (evaluated_heuristic_score < 0 and move.src.row == move.dst.row and move.src.col == move.dst.col):
+                    evaluated_heuristic_score = MIN_HEURISTIC_SCORE
+                    
+                max_evaluated_heuristic_score = max(max_evaluated_heuristic_score, evaluated_heuristic_score)
+            return int(max_evaluated_heuristic_score)
+        
         else:
-            # BETA PRUNING
             min_evaluated_heuristic_score = MAX_HEURISTIC_SCORE
-            for move in self.move_candidates():
-                game_copy = self.clone () # create mock / new board off the original board
-                game_copy.perform_move(move) # create mock / new perform move
-                evaluated_heuristic_score = game_copy.alpha_beta(max_depth - 1, start_time, True, alpha, beta)
-                if evaluated_heuristic_score < min_evaluated_heuristic_score:
-                    min_evaluated_heuristic_score = evaluated_heuristic_score
-                    current_best_move = move
-                beta = min(beta, min_evaluated_heuristic_score)
+            for move in game_copy.move_candidates():        
+                evaluated_heuristic_score = game_copy.minimax(move, depth - 1, start_time, True)
+                
+                if evaluated_heuristic_score is None:
+                    evaluated_heuristic_score = MAX_HEURISTIC_SCORE
+                    
+                min_evaluated_heuristic_score = min(min_evaluated_heuristic_score, evaluated_heuristic_score)   
+            return int(min_evaluated_heuristic_score)
+    
+    def execute_minimax(self):
+        """Executes the minimax algorithm"""
+        best_evaluated_move = None
+        best_evaluation = MIN_HEURISTIC_SCORE
+        
+        start_time = time.time()
+        for move in self.move_candidates():
+            evaluation = self.minimax(move, self.options.max_depth, start_time, True)
+            if evaluation is not None and evaluation > best_evaluation:
+                best_evaluation = evaluation
+                best_evaluated_move = move
+                
+        return (best_evaluation, best_evaluated_move)
+    
+    def alpha_beta(self, move, depth, start_time, alpha, beta, maximizing_player):
+        game_copy = self.clone ()
+        game_copy.perform_move(move)
+        
+        if depth == 0:
+            return game_copy.evaluate_heuristic()
+        
+        if time.time() - start_time > self.options.max_time:
+            return self.evaluate_heuristic()
+        
+        if game_copy.has_winner():
+            return game_copy.evaluate_heuristic()
+        
+        if maximizing_player:
+            max_evaluated_heuristic_score = MIN_HEURISTIC_SCORE
+            for move in game_copy.move_candidates():
+                print("game copy moves ", move)
+                
+            for move in game_copy.move_candidates():
+                 
+                evaluated_heuristic_score = game_copy.alpha_beta(move, depth - 1, start_time, alpha, beta, False)
+                
+                if (evaluated_heuristic_score is None) or (evaluated_heuristic_score < 0 and move.src.row == move.dst.row and move.src.col == move.dst.col):
+                    evaluated_heuristic_score = MIN_HEURISTIC_SCORE
+                    
+                max_evaluated_heuristic_score = max(max_evaluated_heuristic_score, evaluated_heuristic_score)
+                alpha = max(alpha, evaluated_heuristic_score)
                 if beta <= alpha:
                     break
-            return min_evaluated_heuristic_score, current_best_move
-    
-    # def minimax(self, move, depth, start_time, maximizing_player) -> int:
-    #     game_copy = self.clone ()
-    #     game_copy.perform_move(move)
+            return int(max_evaluated_heuristic_score)
         
-    #     if depth == 0:
-    #         return game_copy.evaluate_heuristic()
-        
-    #     if time.time() - start_time > self.options.max_time:
-    #         return self.evaluate_heuristic()
-        
-    #     if game_copy.has_winner():
-    #         return game_copy.evaluate_heuristic()
-        
-    #     if maximizing_player:
-    #         max_evaluated_heuristic_score = MIN_HEURISTIC_SCORE
-    #         for move in game_copy.move_candidates():
+        else:
+            min_evaluated_heuristic_score = MAX_HEURISTIC_SCORE
+            for move in game_copy.move_candidates():        
+                evaluated_heuristic_score = game_copy.alpha_beta(move, depth - 1, start_time, alpha, beta, True)
                 
-    #             evaluated_heuristic_score = game_copy.minimax(move, depth - 1, start_time, False)
+                if evaluated_heuristic_score is None:
+                    evaluated_heuristic_score = MAX_HEURISTIC_SCORE
                 
-    #             if (evaluated_heuristic_score is None) or (evaluated_heuristic_score < 0 and move.src.row == move.dst.row and move.src.col == move.dst.col):
-    #                 evaluated_heuristic_score = MIN_HEURISTIC_SCORE
-                    
-    #             max_evaluated_heuristic_score = max(max_evaluated_heuristic_score, evaluated_heuristic_score)
-    #         return int(max_evaluated_heuristic_score)
-        
-    #     else:
-    #         min_evaluated_heuristic_score = MAX_HEURISTIC_SCORE
-    #         for move in game_copy.move_candidates():        
-    #             evaluated_heuristic_score = game_copy.minimax(move, depth - 1, start_time, True)
-                
-    #             if evaluated_heuristic_score is None:
-    #                 evaluated_heuristic_score = MAX_HEURISTIC_SCORE
-                    
-    #             min_evaluated_heuristic_score = min(min_evaluated_heuristic_score, evaluated_heuristic_score)   
-    #         return int(min_evaluated_heuristic_score)
-    
-    # def execute_minimax(self):
-    #     """Executes the minimax algorithm"""
-    #     best_evaluated_move = None
-    #     best_evaluation = MIN_HEURISTIC_SCORE
-        
-    #     start_time = time.time()
-    #     for move in self.move_candidates():
-    #         evaluation = self.minimax(move, self.options.max_depth, start_time, True)
-    #         if evaluation is not None and evaluation > best_evaluation:
-    #             best_evaluation = evaluation
-    #             best_evaluated_move = move
-                
-    #     return (best_evaluation, best_evaluated_move)
-    
-    # def alpha_beta(self, move, depth, start_time, alpha, beta, maximizing_player):
-    #     game_copy = self.clone ()
-    #     game_copy.perform_move(move)
-        
-    #     if depth == 0:
-    #         return game_copy.evaluate_heuristic()
-        
-    #     if time.time() - start_time > self.options.max_time:
-    #         return self.evaluate_heuristic()
-        
-    #     if game_copy.has_winner():
-    #         return game_copy.evaluate_heuristic()
-        
-    #     if maximizing_player:
-    #         max_evaluated_heuristic_score = MIN_HEURISTIC_SCORE
-    #         for move in game_copy.move_candidates():
-                 
-    #             evaluated_heuristic_score = game_copy.alpha_beta(move, depth - 1, start_time, alpha, beta, False)
-                
-    #             if (evaluated_heuristic_score is None) or (evaluated_heuristic_score < 0 and move.src.row == move.dst.row and move.src.col == move.dst.col):
-    #                 evaluated_heuristic_score = MIN_HEURISTIC_SCORE
-                    
-    #             max_evaluated_heuristic_score = max(max_evaluated_heuristic_score, evaluated_heuristic_score)
-    #             alpha = max(alpha, evaluated_heuristic_score)
-    #             if beta <= alpha:
-    #                 break
-    #         return int(max_evaluated_heuristic_score)
-        
-    #     else:
-    #         min_evaluated_heuristic_score = MAX_HEURISTIC_SCORE
-    #         for move in game_copy.move_candidates():        
-    #             evaluated_heuristic_score = game_copy.alpha_beta(move, depth - 1, start_time, alpha, beta, True)
-                
-    #             if evaluated_heuristic_score is None:
-    #                 evaluated_heuristic_score = MAX_HEURISTIC_SCORE
-                
-    #             min_evaluated_heuristic_score = min(min_evaluated_heuristic_score, evaluated_heuristic_score)
-    #             beta = min(beta, evaluated_heuristic_score)
-    #             if beta <= alpha:
-    #                 break
-    #         return int(min_evaluated_heuristic_score)
+                min_evaluated_heuristic_score = min(min_evaluated_heuristic_score, evaluated_heuristic_score)
+                beta = min(beta, evaluated_heuristic_score)
+                if beta <= alpha:
+                    break
+            return int(min_evaluated_heuristic_score)
             
             
-    # def execute_alpha_beta(self):
-    #     """Executes the minimax algorithm"""
-    #     best_evaluated_move = None
-    #     best_evaluation = MIN_HEURISTIC_SCORE
+    def execute_alpha_beta(self):
+        """Executes the minimax algorithm"""
+        best_evaluated_move = None
+        best_evaluation = MIN_HEURISTIC_SCORE
         
-    #     start_time = time.time()
-    #     for move in self.move_candidates():
-    #         evaluation = self.alpha_beta(move, self.options.max_depth, start_time, float('-inf'), float('inf'), True)
-    #         if evaluation is not None and evaluation > best_evaluation:
-    #             best_evaluation = evaluation
-    #             best_evaluated_move = move
+        start_time = time.time()
+        for move in self.move_candidates():
+            print("current move ", move)
+            evaluation = self.alpha_beta(move, self.options.max_depth, start_time, float('-inf'), float('inf'), True)
+            if evaluation is not None and evaluation > best_evaluation:
+                best_evaluation = evaluation
                 
-    #     return (best_evaluation, best_evaluated_move)
+                print("assigning best evaluated move")
+                best_evaluated_move = move
+                print("best evaluated move: ", move)
+                
+        return (best_evaluation, best_evaluated_move)
                 
     def suggest_move(self) -> CoordPair | None:
         """Suggest the next move using minimax alpha beta. TODO: REPLACE RANDOM_MOVE WITH PROPER GAME LOGIC!!!"""
         start_time = datetime.datetime.now()
         if self.options.alpha_beta_option:
             (score, move) = self.execute_alpha_beta()
-            # (score, move) = self.random_move()
         else: 
             (score, move) = self.execute_minimax()
+        
+        if move is None:
+            # (score, move) = self.random_move()
+            print("No move found!")
             
         elapsed_seconds = (datetime.datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
