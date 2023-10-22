@@ -729,6 +729,7 @@ class Game:
 
     def random_move(self) -> Tuple[int, CoordPair | None, float]:
         """Returns a random move."""
+        # returns a list of valid candidates while removing any that have a value of None
         move_candidates = [m for m in list(self.move_candidates()) if m is not None]
         random.shuffle(move_candidates)
         if len(move_candidates) > 0:
@@ -738,7 +739,7 @@ class Game:
 
 
     def heuristic_score_e0(self) -> int:
-        """Returns the heuristic score for current unit configuration"""
+        """Returns the heuristic score for current unit configuration. Heuristic score is dependent on the number of each type of unit on the board."""
         # AI = 0, Tech = 1, Virus = 2, Program = 3, Firewall = 4
         # E0 = (3VP1 + 3TP1 + 3FP1 + 3PP1 + 9999AIP1) − (3VP2 + 3TP2 + 3FP2 + 3PP2 + 9999AIP2)
         # VPi = nb of Virus of Player i
@@ -775,9 +776,11 @@ class Game:
                 PP2 += 1
             elif unit.type.value == 4:
                 FP2 += 1
-                
+        
+        # calculate the weighted heuristic score 
         heuristic_score = (3*VP1 + 3*TP1 + 3*FP1 + 3*PP1 + 9999*AIP1) - (3*VP2 + 3*TP2 + 3*FP2 + 3*PP2 + 9999*AIP2)
         
+        # ensures that the heuristic score returned does not surpass the designated limits 
         if heuristic_score > MAX_HEURISTIC_SCORE:
             heuristic_score = MAX_HEURISTIC_SCORE
         if heuristic_score < MIN_HEURISTIC_SCORE:
@@ -787,18 +790,30 @@ class Game:
    
    
     def can_strike_to_kill(self, src, unit) -> bool:
-        """Checks to see if the unit at src coordinate can strike to kill an enemy unit"""
+        """Checks to see if the unit at src coordinate can strike to kill an adjacent enemy unit."""
+        
+        # iterate through adjacent coordinates
         for coord in src.iter_adjacent():
+            
+            # get unit at adjacent coordinate if it exists
             coord_unit = self.get(coord)
+            
+            # if the current player can kill the adjacent enemy unit in one move, return True
             if coord_unit is not None and coord_unit.player != unit.player:
                 if unit.damage_amount(coord_unit) >= coord_unit.health:
                     return True
         return False
     
     def can_get_killed(self, src, unit) -> bool:
-        """Checks to see if the unit at src coordinate can get killed by an enemy unit"""
+        """Checks to see if the unit at src coordinate can get killed by an adjacent enemy unit."""
+        
+        # iterate through adjacent coordinates 
         for coord in src.iter_adjacent():
+            
+            # get unit at adjacent coordinate if it exists
             coord_unit = self.get(coord)
+            
+            # if the current player can get killed by the adjacent enemy unit in one move, return True
             if coord_unit is not None and coord_unit.player != unit.player:
                 if coord_unit.damage_amount(unit) >= unit.health:
                     return True
@@ -806,11 +821,21 @@ class Game:
     
     def distance_from_nearest_opponent(self, src, unit) -> int:
         """Returns the distance from the nearest opponent (Manhattan distance)."""
+        
+        # set initial min distance to a large number
         min_distance = 1000
+        
+        # search the board for the nearest opponent
         for coord in CoordPair.from_dim(self.options.dim).iter_rectangle():
+            
+            # get unit at coordinate if it exists
             coord_unit = self.get(coord)
+            
+            # if the unit belongs to an opponent, calculate the manhattan distance from the current unit
             if coord_unit is not None and coord_unit.player != unit.player:
                 manhattan_distance = abs(src.row - coord.row) + abs(src.col - coord.col)
+                
+                # reassign min_distance if the current manhattan distance is smaller
                 if manhattan_distance < min_distance:
                     min_distance = manhattan_distance
         return min_distance
@@ -818,11 +843,13 @@ class Game:
     def multiplier(self, src, unit) -> int:
         """"Returns an int by which the value should be multiplied if the unit is in an offensive postion."""
         multiplier = 0
-        can_get_killed = self.can_get_killed(src, unit)
-        
+         
         # if the unit can strike to kill an opponent, this is a good move
         if self.can_strike_to_kill(src, unit):
             multiplier += 8
+        
+        # evaluate if the unit can get killed by an adjacent opponent unit 
+        can_get_killed = self.can_get_killed(src, unit)
         
          # if the unit can get killed by an opponent, this is a bad move
         if can_get_killed:
@@ -835,8 +862,16 @@ class Game:
         return multiplier
         
     def heuristic_score_e1(self, move) -> int:
-        """Returns the heuristic score for current unit configuration. Offensive Heuristic."""
-        # (Coord(row=2, col=4), Unit(player=<Player.Attacker: 0>, type=<UnitType.Program: 3>, health=7))        
+        """
+        Returns the heuristic score for current unit configuration. Offensive Heuristic.
+        
+        - Heuristic score is calculated using weighted values for each unit type. 
+        - The heuristic score is multiplied by a multiplier value, depedning on how advantageous 
+          the move is in terms of being able to kill an oppent piece, damage an oppennt piece, or avoid being 
+          killed by an opponent piece.
+        - Heuristic also disfavours moves that can result in the current player's AI and Tech/Virus dying or self-destructing.
+        """
+        
         # values of pieces differ by impotance: AI = 100. Tech = 80, Virus = 100, Program = 50, Firewall = 30
         
         # initialize variables 
@@ -851,10 +886,12 @@ class Game:
                     return MIN_HEURISTIC_SCORE
                 heuristic_score += 100 + 100*self.multiplier(src, unit)
                 
-            elif unit.type.value == 1 or unit.type.value == 2: # Tech or Virus 
+            elif unit.type.value == 1 or unit.type.value == 2: # Tech or Virus
+                 
                 # if current player Tech/Virus can die or self destruct, avoid this move
                 if self.can_get_killed(src, unit) or (move.src == move.dst):
                     return MIN_HEURISTIC_SCORE
+                
                 heuristic_score += 80 + 80*self.multiplier(src, unit)
                 
             elif unit.type.value == 3: # Program
@@ -867,9 +904,11 @@ class Game:
         for (src, unit) in self.player_units(self.next_player.next()):
             
             if unit.type.value == 0: # Opp AI
+                
                 # if opponent's AI can die, this is a good move
                 if self.can_get_killed(src, unit):
                     return MAX_HEURISTIC_SCORE
+                
                 heuristic_score -= 100 + 100*self.multiplier(src, unit)
                 
             elif unit.type.value == 1 or unit.type.value == 2: # Tech or Virus 
@@ -881,7 +920,7 @@ class Game:
             elif unit.type.value == 4: # Opp Firewall
                 heuristic_score -= 30 + 30*self.multiplier(src, unit)
         
-            
+        # ensures that the heuristic score returned does not surpass the designated limits 
         if heuristic_score > MAX_HEURISTIC_SCORE:
             heuristic_score = MAX_HEURISTIC_SCORE
         if heuristic_score < MIN_HEURISTIC_SCORE:
@@ -890,7 +929,15 @@ class Game:
         return heuristic_score
     
     def heuristic_score_e2(self, move) -> int:
-        """Returns the heuristic score for current unit configuration. Health-based Heuristic."""
+        """
+        Returns the heuristic score for current unit configuration. Health-based Heuristic.
+        
+        - Heuristic score is calculated using weighted values for each unit type.
+        - The individual weighted value for each unit is multiplied by the respective unit's 
+          current health value before being added to the total heuristic score.
+        - Heuristic also disfavours moves that can result in the current player's AI and Tech/Virus dying or self-destructing.
+        """
+        
         # initialize variables 
         heuristic_score = 0
 
@@ -898,15 +945,19 @@ class Game:
         for (src, unit) in self.player_units(self.next_player):
             
             if unit.type.value == 0: # AI
+                
                 # if current player AI can die or self destruct, avoid this move
                 if self.can_get_killed(src, unit) or (move.src == move.dst):
                     return MIN_HEURISTIC_SCORE
+                
                 heuristic_score += 1000*unit.health
                 
             elif unit.type.value == 1 or unit.type.value == 2: # Tech or Virus 
+                
                 # if current player Tech/Virus can die or self destruct, avoid this move
                 if self.can_get_killed(src, unit) or (move.src == move.dst):
                     return MIN_HEURISTIC_SCORE
+                
                 heuristic_score += 80*unit.health
                 
             elif unit.type.value == 3: # Program
@@ -919,12 +970,14 @@ class Game:
         for (src, unit) in self.player_units(self.next_player.next()):
             
             if unit.type.value == 0: # Opp AI
+                
                 # if oppenent's AI can die, this is a good move
                 if self.can_get_killed(src, unit):
                     return MAX_HEURISTIC_SCORE
+                
                 heuristic_score -= 1000*unit.health
                 
-            elif unit.type.value == 1 or unit.type.value == 2: # Tech or Virus 
+            elif unit.type.value == 1 or unit.type.value == 2: # Opp Tech or Virus 
                 heuristic_score -= 80*unit.health
                 
             elif unit.type.value == 3: # Opp Program
@@ -933,7 +986,7 @@ class Game:
             elif unit.type.value == 4: # Opp Firewall
                 heuristic_score -= 30*unit.health
         
-            
+        # ensures that the heuristic score returned does not surpass the designated limits     
         if heuristic_score > MAX_HEURISTIC_SCORE:
             heuristic_score = MAX_HEURISTIC_SCORE
         if heuristic_score < MIN_HEURISTIC_SCORE:
@@ -951,53 +1004,78 @@ class Game:
             return self.heuristic_score_e0()
     
     def minimax(self, move, depth, start_time, maximizing_player) -> int:
+        """Implements the minimax algorithm. Returns the heuristic score of the best move for the current player."""
+        
+        # create a copy of the game state and perform the given move 
         game_copy = self.clone ()
         game_copy.perform_move(move)
         
+        # base case: if the depth is 0, return the heuristic score of the given move
         if depth == 0:
             return game_copy.evaluate_heuristic(move)
         
+        # base case: if the time limit is reached, return the heuristic score of the given move
         if time.time() - start_time > self.options.max_time:
             return self.evaluate_heuristic(move)
         
+        # base case: if there is a winner, return the heuristic score of the given move
         if game_copy.has_winner():
             return game_copy.evaluate_heuristic(move)
         
+        # if the current player is the maximizing player, return the maximum heuristic score of the valid moves
         if maximizing_player:
             max_evaluated_heuristic_score = MIN_HEURISTIC_SCORE
+            
+            # only consider valid and non-None moves 
             valid_moves = [m for m in game_copy.move_candidates() if m is not None]
+            
             for move in valid_moves:
                 if move is not None and isinstance(move, CoordPair):   
+                    # recursively evaluate heuristic score of the move
                     evaluated_heuristic_score = game_copy.minimax(move, depth - 1, start_time, False)
                     
+                    # discourage None scores and self-destructs
                     if (evaluated_heuristic_score is None) or (evaluated_heuristic_score < 0 and move.src.row == move.dst.row and move.src.col == move.dst.col):
                         evaluated_heuristic_score = MIN_HEURISTIC_SCORE
                         
                     max_evaluated_heuristic_score = max(max_evaluated_heuristic_score, evaluated_heuristic_score)
+                    
             return int(max_evaluated_heuristic_score)
         
+        # if the current player is not the maximizing player, return the minimum heuristic score of the valid moves
         else:
             min_evaluated_heuristic_score = MAX_HEURISTIC_SCORE
+            
+            # only consider valid and non-None moves 
             valid_moves = [m for m in game_copy.move_candidates() if m is not None]
+            
             for move in valid_moves:
                 if move is not None and isinstance(move, CoordPair):       
+                    # recursively evaluate heuristic score of the move
                     evaluated_heuristic_score = game_copy.minimax(move, depth - 1, start_time, True)
                     
+                    # discourage None scores
                     if evaluated_heuristic_score is None:
                         evaluated_heuristic_score = MAX_HEURISTIC_SCORE
                         
                     min_evaluated_heuristic_score = min(min_evaluated_heuristic_score, evaluated_heuristic_score)   
+                    
             return int(min_evaluated_heuristic_score)
     
     def execute_minimax(self):
         """Executes the minimax algorithm"""
+        
         best_evaluated_move = None
         best_evaluation = MIN_HEURISTIC_SCORE
         
         start_time = time.time()
         
+        # only consider valid and non-None moves
         move_candidates = [m for m in list(self.move_candidates()) if m is not None]
+        
+        # provide more variation in depth-alotted and time-alotted move candidates exploration by shuffling the list
         random.shuffle(move_candidates)
+        
         for move in move_candidates:
             
             evaluation = self.minimax(move, self.options.max_depth, start_time, True)
@@ -1009,50 +1087,70 @@ class Game:
         return (best_evaluation, best_evaluated_move)
     
     def alpha_beta(self, move, depth, start_time, alpha, beta, maximizing_player):
+        """Implements the alpha-beta pruning algorithm. Returns the heuristic score of the best move for the current player."""
+        
+        # create a copy of the game state and perform the given move 
         game_copy = self.clone ()
         game_copy.perform_move(move)
         
+        # base case: if the depth is 0, return the heuristic score of the given move
         if depth == 0:
             return game_copy.evaluate_heuristic(move)
         
+        # base case: if the time limit is reached, return the heuristic score of the given move
         if time.time() - start_time > self.options.max_time:
             return self.evaluate_heuristic(move)
         
+        # base case: if there is a winner, return the heuristic score of the given move
         if game_copy.has_winner():
             return game_copy.evaluate_heuristic(move)
         
+        # if the current player is the maximizing player, return the maximum heuristic score of the valid moves
         if maximizing_player:
             max_evaluated_heuristic_score = MIN_HEURISTIC_SCORE
-                
+            
+            # only consider valid and non-None moves
             valid_moves = [m for m in game_copy.move_candidates() if m is not None]
             for move in valid_moves:
                 if move is not None and isinstance(move, CoordPair):
                  
+                    # recursively evaluate heuristic score of the move
                     evaluated_heuristic_score = game_copy.alpha_beta(move, depth - 1, start_time, alpha, beta, False)
                     
                     if (evaluated_heuristic_score is None) or (evaluated_heuristic_score < 0 and move.src.row == move.dst.row and move.src.col == move.dst.col):
                         evaluated_heuristic_score = MIN_HEURISTIC_SCORE
                         
                     max_evaluated_heuristic_score = max(max_evaluated_heuristic_score, evaluated_heuristic_score)
+                    
+                    # update the value for alpha and check if pruning is possible
                     alpha = max(alpha, evaluated_heuristic_score)
                     if beta <= alpha:
                         break
+                    
             return int(max_evaluated_heuristic_score)
         
+        # if the current player is the minimizing player, return the minimum heuristic score of the valid moves
         else:
             min_evaluated_heuristic_score = MAX_HEURISTIC_SCORE
+            
+            # only consider valid and non-None moves
             valid_moves = [m for m in game_copy.move_candidates() if m is not None]
             for move in valid_moves:
                 if move is not None and isinstance(move, CoordPair):
+                    
+                    # recursively evaluate heuristic score of the move
                     evaluated_heuristic_score = game_copy.alpha_beta(move, depth - 1, start_time, alpha, beta, True)
                     
                     if evaluated_heuristic_score is None:
                         evaluated_heuristic_score = MAX_HEURISTIC_SCORE
                     
                     min_evaluated_heuristic_score = min(min_evaluated_heuristic_score, evaluated_heuristic_score)
+                    
+                    # update the value for beta and check if pruning is possible
                     beta = min(beta, evaluated_heuristic_score)
                     if beta <= alpha:
                         break
+                    
             return int(min_evaluated_heuristic_score)
             
     def execute_alpha_beta(self):
@@ -1062,9 +1160,15 @@ class Game:
         
         start_time = time.time()
         
+        # only consider valid and non-None moves
         move_candidates = [m for m in list(self.move_candidates()) if m is not None]
+        
+        # provide more variation in depth-alotted and time-alotted move candidates exploration by shuffling the list
         random.shuffle(move_candidates)
+        
         for move in move_candidates:
+            
+            # recursively evaluate heuristic score of the move
             evaluation = self.alpha_beta(move, self.options.max_depth, start_time, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE, True)
                 
             if evaluation is not None and evaluation > best_evaluation:
@@ -1076,11 +1180,14 @@ class Game:
     def suggest_move(self) -> CoordPair | None:
         """Suggest the next move using minimax alpha beta. TODO: REPLACE RANDOM_MOVE WITH PROPER GAME LOGIC!!!"""
         start_time = datetime.datetime.now()
+        
+        # execute alpha-beta or minimax algorithm depending on the option selected
         if self.options.alpha_beta_option:
             (score, move) = self.execute_alpha_beta()
         else: 
             (score, move) = self.execute_minimax() 
         
+        # in case no valid move is returned, return a random move
         if move is None:
             (score, move) = self.random_move()
             
