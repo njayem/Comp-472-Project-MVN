@@ -1242,6 +1242,7 @@ def main():
         # append the winner to the output trace file
         if winner is not None:
             print(f"----------------Game Over----------------\n\n{winner.name} wins in {game.turns_played} turns\n")
+            print(f"{winner.name} wins in {game.turns_played} turns\n")
             with open(file_path, 'a') as file:
                 file.write(f"----------------Game Over----------------\n")
                 file.write(
