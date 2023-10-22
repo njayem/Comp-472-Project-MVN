@@ -732,9 +732,9 @@ class Game:
         move_candidates = list(self.move_candidates())
         random.shuffle(move_candidates)
         if len(move_candidates) > 0:
-            return (self.heuristic_score_e2(), move_candidates[0])
+            return (self.evaluate_heuristic(move_candidates[0]), move_candidates[0])
         else:
-            return (self.heuristic_score_e2(), None)
+            return (self.evaluate_heuristic(move_candidates[0]), None)
 
 
     def heuristic_score_e0(self) -> int:
@@ -1080,8 +1080,7 @@ class Game:
         if self.options.alpha_beta_option:
             (score, move) = self.execute_alpha_beta()
         else: 
-            (score, move) = self.execute_minimax()
-            
+            (score, move) = self.execute_minimax() 
         elapsed_seconds = (datetime.datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
         print(f"Heuristic score: {score}")
