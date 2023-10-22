@@ -729,7 +729,7 @@ class Game:
 
     def random_move(self) -> Tuple[int, CoordPair | None, float]:
         """Returns a random move."""
-        move_candidates = list(self.move_candidates())
+        move_candidates = [m for m in list(self.move_candidates()) if m is not None]
         random.shuffle(move_candidates)
         if len(move_candidates) > 0:
             return (self.evaluate_heuristic(move_candidates[0]), move_candidates[0])
@@ -965,25 +965,28 @@ class Game:
         
         if maximizing_player:
             max_evaluated_heuristic_score = MIN_HEURISTIC_SCORE
-            for move in game_copy.move_candidates():
-                
-                evaluated_heuristic_score = game_copy.minimax(move, depth - 1, start_time, False)
-                
-                if (evaluated_heuristic_score is None) or (evaluated_heuristic_score < 0 and move.src.row == move.dst.row and move.src.col == move.dst.col):
-                    evaluated_heuristic_score = MIN_HEURISTIC_SCORE
+            valid_moves = [m for m in game_copy.move_candidates() if m is not None]
+            for move in valid_moves:
+                if move is not None and isinstance(move, CoordPair):   
+                    evaluated_heuristic_score = game_copy.minimax(move, depth - 1, start_time, False)
                     
-                max_evaluated_heuristic_score = max(max_evaluated_heuristic_score, evaluated_heuristic_score)
+                    if (evaluated_heuristic_score is None) or (evaluated_heuristic_score < 0 and move.src.row == move.dst.row and move.src.col == move.dst.col):
+                        evaluated_heuristic_score = MIN_HEURISTIC_SCORE
+                        
+                    max_evaluated_heuristic_score = max(max_evaluated_heuristic_score, evaluated_heuristic_score)
             return int(max_evaluated_heuristic_score)
         
         else:
             min_evaluated_heuristic_score = MAX_HEURISTIC_SCORE
-            for move in game_copy.move_candidates():        
-                evaluated_heuristic_score = game_copy.minimax(move, depth - 1, start_time, True)
-                
-                if evaluated_heuristic_score is None:
-                    evaluated_heuristic_score = MAX_HEURISTIC_SCORE
+            valid_moves = [m for m in game_copy.move_candidates() if m is not None]
+            for move in valid_moves:
+                if move is not None and isinstance(move, CoordPair):       
+                    evaluated_heuristic_score = game_copy.minimax(move, depth - 1, start_time, True)
                     
-                min_evaluated_heuristic_score = min(min_evaluated_heuristic_score, evaluated_heuristic_score)   
+                    if evaluated_heuristic_score is None:
+                        evaluated_heuristic_score = MAX_HEURISTIC_SCORE
+                        
+                    min_evaluated_heuristic_score = min(min_evaluated_heuristic_score, evaluated_heuristic_score)   
             return int(min_evaluated_heuristic_score)
     
     def execute_minimax(self):
@@ -993,7 +996,7 @@ class Game:
         
         start_time = time.time()
         
-        move_candidates = list(self.move_candidates())
+        move_candidates = [m for m in list(self.move_candidates()) if m is not None]
         random.shuffle(move_candidates)
         for move in move_candidates:
             
@@ -1002,10 +1005,6 @@ class Game:
             if evaluation is not None and evaluation > best_evaluation:
                 best_evaluation = evaluation
                 best_evaluated_move = move
-        
-        if best_evaluated_move is None:
-            best_evaluated_move = self.random_move()
-            best_evaluation = self.evaluate_heuristic(best_evaluated_move)
                 
         return (best_evaluation, best_evaluated_move)
     
@@ -1025,31 +1024,35 @@ class Game:
         if maximizing_player:
             max_evaluated_heuristic_score = MIN_HEURISTIC_SCORE
                 
-            for move in game_copy.move_candidates():
+            valid_moves = [m for m in game_copy.move_candidates() if m is not None]
+            for move in valid_moves:
+                if move is not None and isinstance(move, CoordPair):
                  
-                evaluated_heuristic_score = game_copy.alpha_beta(move, depth - 1, start_time, alpha, beta, False)
-                
-                if (evaluated_heuristic_score is None) or (evaluated_heuristic_score < 0 and move.src.row == move.dst.row and move.src.col == move.dst.col):
-                    evaluated_heuristic_score = MIN_HEURISTIC_SCORE
+                    evaluated_heuristic_score = game_copy.alpha_beta(move, depth - 1, start_time, alpha, beta, False)
                     
-                max_evaluated_heuristic_score = max(max_evaluated_heuristic_score, evaluated_heuristic_score)
-                alpha = max(alpha, evaluated_heuristic_score)
-                if beta <= alpha:
-                    break
+                    if (evaluated_heuristic_score is None) or (evaluated_heuristic_score < 0 and move.src.row == move.dst.row and move.src.col == move.dst.col):
+                        evaluated_heuristic_score = MIN_HEURISTIC_SCORE
+                        
+                    max_evaluated_heuristic_score = max(max_evaluated_heuristic_score, evaluated_heuristic_score)
+                    alpha = max(alpha, evaluated_heuristic_score)
+                    if beta <= alpha:
+                        break
             return int(max_evaluated_heuristic_score)
         
         else:
             min_evaluated_heuristic_score = MAX_HEURISTIC_SCORE
-            for move in game_copy.move_candidates():        
-                evaluated_heuristic_score = game_copy.alpha_beta(move, depth - 1, start_time, alpha, beta, True)
-                
-                if evaluated_heuristic_score is None:
-                    evaluated_heuristic_score = MAX_HEURISTIC_SCORE
-                
-                min_evaluated_heuristic_score = min(min_evaluated_heuristic_score, evaluated_heuristic_score)
-                beta = min(beta, evaluated_heuristic_score)
-                if beta <= alpha:
-                    break
+            valid_moves = [m for m in game_copy.move_candidates() if m is not None]
+            for move in valid_moves:
+                if move is not None and isinstance(move, CoordPair):
+                    evaluated_heuristic_score = game_copy.alpha_beta(move, depth - 1, start_time, alpha, beta, True)
+                    
+                    if evaluated_heuristic_score is None:
+                        evaluated_heuristic_score = MAX_HEURISTIC_SCORE
+                    
+                    min_evaluated_heuristic_score = min(min_evaluated_heuristic_score, evaluated_heuristic_score)
+                    beta = min(beta, evaluated_heuristic_score)
+                    if beta <= alpha:
+                        break
             return int(min_evaluated_heuristic_score)
             
     def execute_alpha_beta(self):
@@ -1059,7 +1062,7 @@ class Game:
         
         start_time = time.time()
         
-        move_candidates = list(self.move_candidates())
+        move_candidates = [m for m in list(self.move_candidates()) if m is not None]
         random.shuffle(move_candidates)
         for move in move_candidates:
             evaluation = self.alpha_beta(move, self.options.max_depth, start_time, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE, True)
@@ -1067,10 +1070,6 @@ class Game:
             if evaluation is not None and evaluation > best_evaluation:
                 best_evaluation = evaluation
                 best_evaluated_move = move
-        
-        if best_evaluated_move is None:
-            best_evaluated_move = self.random_move()
-            best_evaluation = self.evaluate_heuristic(best_evaluated_move)
                 
         return (best_evaluation, best_evaluated_move)
                 
@@ -1081,6 +1080,10 @@ class Game:
             (score, move) = self.execute_alpha_beta()
         else: 
             (score, move) = self.execute_minimax() 
+        
+        if move is None:
+            (score, move) = self.random_move()
+            
         elapsed_seconds = (datetime.datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
         print(f"Heuristic score: {score}")
