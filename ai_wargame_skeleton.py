@@ -834,7 +834,7 @@ class Game:
         
         return multiplier
         
-    def heuristic_score_e1(self) -> int:
+    def heuristic_score_e1(self, move) -> int:
         """Returns the heuristic score for current unit configuration. Offensive Heuristic."""
         # (Coord(row=2, col=4), Unit(player=<Player.Attacker: 0>, type=<UnitType.Program: 3>, health=7))        
         # values of pieces differ by impotance: AI = 100. Tech = 80, Virus = 100, Program = 50, Firewall = 30
@@ -846,12 +846,15 @@ class Game:
         for (src, unit) in self.player_units(self.next_player):
             
             if unit.type.value == 0: # AI
-                # if current player AI can die, avoid this move
-                if self.can_get_killed(src, unit):
+                # if current player AI can die or self destruct, avoid this move
+                if self.can_get_killed(src, unit) or (move.src == move.dst):
                     return MIN_HEURISTIC_SCORE
                 heuristic_score += 100 + 100*self.multiplier(src, unit)
                 
             elif unit.type.value == 1 or unit.type.value == 2: # Tech or Virus 
+                # if current player Tech/Virus can die or self destruct, avoid this move
+                if self.can_get_killed(src, unit) or (move.src == move.dst):
+                    return MIN_HEURISTIC_SCORE
                 heuristic_score += 80 + 80*self.multiplier(src, unit)
                 
             elif unit.type.value == 3: # Program
@@ -886,7 +889,7 @@ class Game:
 
         return heuristic_score
     
-    def heuristic_score_e2(self) -> int:
+    def heuristic_score_e2(self, move) -> int:
         """Returns the heuristic score for current unit configuration. Health-based Heuristic."""
         # initialize variables 
         heuristic_score = 0
@@ -895,12 +898,15 @@ class Game:
         for (src, unit) in self.player_units(self.next_player):
             
             if unit.type.value == 0: # AI
-                # of current player AI can die, avoid this move
-                if self.can_get_killed(src, unit):
+                # if current player AI can die or self destruct, avoid this move
+                if self.can_get_killed(src, unit) or (move.src == move.dst):
                     return MIN_HEURISTIC_SCORE
                 heuristic_score += 1000*unit.health
                 
             elif unit.type.value == 1 or unit.type.value == 2: # Tech or Virus 
+                # if current player Tech/Virus can die or self destruct, avoid this move
+                if self.can_get_killed(src, unit) or (move.src == move.dst):
+                    return MIN_HEURISTIC_SCORE
                 heuristic_score += 80*unit.health
                 
             elif unit.type.value == 3: # Program
@@ -935,28 +941,12 @@ class Game:
 
         return heuristic_score
         
-        
-    def is_maximizing_player(self, player: Player) -> bool:
-        """Check if the player is the maximizing player."""
-        
-        # if Human is Attacker, maximizing player = Defender (AI)
-        if self.options.game_type == GameType.AttackerVsComp:
-            return player != Player.Attacker
-        
-        # if Human is Defender, maximizing player = Attacker (AI)
-        elif self.options.game_type == GameType.CompVsDefender:
-            return player != Player.Defender
-        
-        # if AI vs AI, maximizing player = current player
-        else:
-            return True
-        
-    def evaluate_heuristic(self) -> int:
+    def evaluate_heuristic(self, move) -> int:
         """Evaluates the heuristic score based on the heuristic option selected"""
         if self.options.heuristic == "e2":
-            return self.heuristic_score_e2()
+            return self.heuristic_score_e2(move)
         elif self.options.heuristic == "e1":
-            return self.heuristic_score_e1()
+            return self.heuristic_score_e1(move)
         else:
             return self.heuristic_score_e0()
     
@@ -965,13 +955,13 @@ class Game:
         game_copy.perform_move(move)
         
         if depth == 0:
-            return game_copy.evaluate_heuristic()
+            return game_copy.evaluate_heuristic(move)
         
         if time.time() - start_time > self.options.max_time:
-            return self.evaluate_heuristic()
+            return self.evaluate_heuristic(move)
         
         if game_copy.has_winner():
-            return game_copy.evaluate_heuristic()
+            return game_copy.evaluate_heuristic(move)
         
         if maximizing_player:
             max_evaluated_heuristic_score = MIN_HEURISTIC_SCORE
@@ -1012,6 +1002,10 @@ class Game:
             if evaluation is not None and evaluation > best_evaluation:
                 best_evaluation = evaluation
                 best_evaluated_move = move
+        
+        if best_evaluated_move is None:
+            best_evaluated_move = self.random_move()
+            best_evaluation = self.alpha_beta(move, self.options.max_depth, start_time, float('-inf'), float('inf'), True)
                 
         return (best_evaluation, best_evaluated_move)
     
@@ -1020,13 +1014,13 @@ class Game:
         game_copy.perform_move(move)
         
         if depth == 0:
-            return game_copy.evaluate_heuristic()
+            return game_copy.evaluate_heuristic(move)
         
         if time.time() - start_time > self.options.max_time:
-            return self.evaluate_heuristic()
+            return self.evaluate_heuristic(move)
         
         if game_copy.has_winner():
-            return game_copy.evaluate_heuristic()
+            return game_copy.evaluate_heuristic(move)
         
         if maximizing_player:
             max_evaluated_heuristic_score = MIN_HEURISTIC_SCORE
@@ -1058,7 +1052,6 @@ class Game:
                     break
             return int(min_evaluated_heuristic_score)
             
-            
     def execute_alpha_beta(self):
         """Executes the minimax algorithm"""
         best_evaluated_move = None
@@ -1069,13 +1062,15 @@ class Game:
         move_candidates = list(self.move_candidates())
         random.shuffle(move_candidates)
         for move in move_candidates:
-            print("current move ", move)
-            
             evaluation = self.alpha_beta(move, self.options.max_depth, start_time, float('-inf'), float('inf'), True)
                 
             if evaluation is not None and evaluation > best_evaluation:
                 best_evaluation = evaluation
                 best_evaluated_move = move
+        
+        if best_evaluated_move is None:
+            best_evaluated_move = self.random_move()
+            best_evaluation = self.alpha_beta(move, self.options.max_depth, start_time, float('-inf'), float('inf'), True)
                 
         return (best_evaluation, best_evaluated_move)
                 
@@ -1086,10 +1081,6 @@ class Game:
             (score, move) = self.execute_alpha_beta()
         else: 
             (score, move) = self.execute_minimax()
-        
-        if move is None:
-            # (score, move) = self.random_move()
-            print("No move found!")
             
         elapsed_seconds = (datetime.datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
