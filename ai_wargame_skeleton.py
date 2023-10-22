@@ -323,7 +323,7 @@ class Game:
         """Check if contents of a board cell of the game at Coord is empty (must be valid coord)."""
         return self.board[coord.row][coord.col] is None
 
-    def get(self, coord: Coord) -> Unit | None:
+    def get(self, coord : Coord) -> Unit | None:
         """Get contents of a board cell of the game at Coord."""
         if self.is_valid_coord(coord):
             return self.board[coord.row][coord.col]
@@ -1005,7 +1005,7 @@ class Game:
         
         if best_evaluated_move is None:
             best_evaluated_move = self.random_move()
-            best_evaluation = self.alpha_beta(move, self.options.max_depth, start_time, float('-inf'), float('inf'), True)
+            best_evaluation = self.evaluate_heuristic(best_evaluated_move)
                 
         return (best_evaluation, best_evaluated_move)
     
@@ -1062,7 +1062,7 @@ class Game:
         move_candidates = list(self.move_candidates())
         random.shuffle(move_candidates)
         for move in move_candidates:
-            evaluation = self.alpha_beta(move, self.options.max_depth, start_time, float('-inf'), float('inf'), True)
+            evaluation = self.alpha_beta(move, self.options.max_depth, start_time, MIN_HEURISTIC_SCORE, MAX_HEURISTIC_SCORE, True)
                 
             if evaluation is not None and evaluation > best_evaluation:
                 best_evaluation = evaluation
@@ -1070,7 +1070,7 @@ class Game:
         
         if best_evaluated_move is None:
             best_evaluated_move = self.random_move()
-            best_evaluation = self.alpha_beta(move, self.options.max_depth, start_time, float('-inf'), float('inf'), True)
+            best_evaluation = self.evaluate_heuristic(best_evaluated_move)
                 
         return (best_evaluation, best_evaluated_move)
                 
