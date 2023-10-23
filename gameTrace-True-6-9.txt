@@ -1,0 +1,212 @@
+The game parameters:
+The value of the timeout in seconds t: 6.0
+The max number of turns: 9
+Alpha-beta is (on or off): on
+The play mode: auto
+The name of the heuristic: e1
+
+-----------INITIAL CONFIGURATION-----------
+
+Next player: Attacker
+Turn #0
+
+    0   1   2   3   4  
+A: dA9 dT9 dF9  .   .  
+B: dT9 dP9  .   .   .  
+C: dF9  .   .   .  aP9 
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+
+Heuristic score: 20
+Cumulative evals by depth: 1=13 2=2 3=12 4=4 5=38 6=27 7=328 8=3720 9=10524 
+
+Cumulative evals: 14680
+Cumulative % evals by depth: 1=0.09% 2=0.01% 3=0.08% 4=0.03% 5=0.26% 6=0.18% 7=2.23% 8=25.34% 9=71.69% 
+Average branching factor: 2.9
+Time for this action: 6.021 sec
+
+
+
+Attacker: move from C4 to B4
+Next player: Defender
+Turn #1
+
+    0   1   2   3   4  
+A: dA9 dT9 dF9  .   .  
+B: dT9 dP9  .   .  aP9 
+C: dF9  .   .   .   .  
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+
+Heuristic score: -20
+Cumulative evals by depth: 1=28 2=5 3=26 4=9 5=94 6=104 7=1006 8=6933 9=22112 
+
+Cumulative evals: 30341
+Cumulative % evals by depth: 1=0.09% 2=0.02% 3=0.09% 4=0.03% 5=0.31% 6=0.34% 7=3.32% 8=22.85% 9=72.88% 
+Average branching factor: 2.5
+Time for this action: 6.022 sec
+
+
+
+Defender: move from A2 to B2
+Next player: Attacker
+Turn #2
+
+    0   1   2   3   4  
+A: dA9 dT9  .   .   .  
+B: dT9 dP9 dF9  .  aP9 
+C: dF9  .   .   .   .  
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+
+Heuristic score: 20
+Cumulative evals by depth: 1=40 2=7 3=39 4=14 5=132 6=130 7=1331 8=10743 9=32575 
+
+Cumulative evals: 45048
+Cumulative % evals by depth: 1=0.09% 2=0.02% 3=0.09% 4=0.03% 5=0.29% 6=0.29% 7=2.95% 8=23.85% 9=72.31% 
+Average branching factor: 2.7
+Time for this action: 6.026 sec
+
+
+
+Attacker: move from B4 to A4
+Next player: Defender
+Turn #3
+
+    0   1   2   3   4  
+A: dA9 dT9  .   .  aP9 
+B: dT9 dP9 dF9  .   .  
+C: dF9  .   .   .   .  
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+
+Heuristic score: -20
+Cumulative evals by depth: 1=54 2=11 3=55 4=20 5=175 6=179 7=1868 8=12898 9=44581 
+
+Cumulative evals: 59890
+Cumulative % evals by depth: 1=0.09% 2=0.02% 3=0.09% 4=0.03% 5=0.29% 6=0.3% 7=3.12% 8=21.54% 9=74.44% 
+Average branching factor: 2.4
+Time for this action: 6.019 sec
+
+
+
+Defender: move from A1 to A2
+Next player: Attacker
+Turn #4
+
+    0   1   2   3   4  
+A: dA9  .  dT9  .  aP9 
+B: dT9 dP9 dF9  .   .  
+C: dF9  .   .   .   .  
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+
+Heuristic score: 20
+Cumulative evals by depth: 1=66 2=13 3=67 4=24 5=213 6=207 7=2197 8=16453 9=55070 
+
+Cumulative evals: 74371
+Cumulative % evals by depth: 1=0.09% 2=0.02% 3=0.09% 4=0.03% 5=0.29% 6=0.28% 7=2.95% 8=22.12% 9=74.05% 
+Average branching factor: 2.5
+Time for this action: 6.024 sec
+
+
+
+Attacker: move from D3 to C3
+Next player: Defender
+Turn #5
+
+    0   1   2   3   4  
+A: dA9  .  dT9  .  aP9 
+B: dT9 dP9 dF9  .   .  
+C: dF9  .   .  aF9  .  
+D:  .   .   .   .  aV9 
+E:  .   .  aP9 aV9 aA9 
+
+Heuristic score: -20
+Cumulative evals by depth: 1=79 2=15 3=81 4=27 5=255 6=259 7=2770 8=18508 9=67077 
+
+Cumulative evals: 89146
+Cumulative % evals by depth: 1=0.09% 2=0.02% 3=0.09% 4=0.03% 5=0.29% 6=0.29% 7=3.11% 8=20.76% 9=75.24% 
+Average branching factor: 2.3
+Time for this action: 6.019 sec
+
+
+
+Defender: move from A0 to A1
+Next player: Attacker
+Turn #6
+
+    0   1   2   3   4  
+A:  .  dA9 dT9  .  aP9 
+B: dT9 dP9 dF9  .   .  
+C: dF9  .   .  aF9  .  
+D:  .   .   .   .  aV9 
+E:  .   .  aP9 aV9 aA9 
+
+Heuristic score: 20
+Cumulative evals by depth: 1=93 2=17 3=95 4=29 5=281 6=283 7=3075 8=22010 9=78908 
+
+Cumulative evals: 104880
+Cumulative % evals by depth: 1=0.09% 2=0.02% 3=0.09% 4=0.03% 5=0.27% 6=0.27% 7=2.93% 8=20.99% 9=75.24% 
+Average branching factor: 2.4
+Time for this action: 6.024 sec
+
+
+
+Attacker: move from C3 to B3
+Next player: Defender
+Turn #7
+
+    0   1   2   3   4  
+A:  .  dA9 dT9  .  aP9 
+B: dT9 dP9 dF9 aF9  .  
+C: dF9  .   .   .   .  
+D:  .   .   .   .  aV9 
+E:  .   .  aP9 aV9 aA9 
+
+Heuristic score: 130
+Cumulative evals by depth: 1=108 2=21 3=109 4=37 5=360 6=371 7=3899 8=24731 9=90875 
+
+Cumulative evals: 120612
+Cumulative % evals by depth: 1=0.09% 2=0.02% 3=0.09% 4=0.03% 5=0.3% 6=0.31% 7=3.23% 8=20.5% 9=75.34% 
+Average branching factor: 2.3
+Time for this action: 6.019 sec
+
+
+
+Defender: move from A2 to A3
+Next player: Attacker
+Turn #8
+
+    0   1   2   3   4  
+A:  .  dA9  .  dT9 aP9 
+B: dT9 dP9 dF9 aF9  .  
+C: dF9  .   .   .   .  
+D:  .   .   .   .  aV9 
+E:  .   .  aP9 aV9 aA9 
+
+Heuristic score: -130
+Cumulative evals by depth: 1=122 2=23 3=122 4=39 5=385 6=393 7=4182 8=28016 9=102255 
+
+Cumulative evals: 135652
+Cumulative % evals by depth: 1=0.09% 2=0.02% 3=0.09% 4=0.03% 5=0.28% 6=0.29% 7=3.08% 8=20.65% 9=75.38% 
+Average branching factor: 2.3
+Time for this action: 6.017 sec
+
+
+
+Attacker: attack from A4 to A3 
+combat damage: to source = 1, to target = 3
+Next player: Defender
+Turn #9
+
+    0   1   2   3   4  
+A:  .  dA9  .  dT6 aP8 
+B: dT9 dP9 dF9 aF9  .  
+C: dF9  .   .   .   .  
+D:  .   .   .   .  aV9 
+E:  .   .  aP9 aV9 aA9 
+
+----------------Game Over----------------
+
+Defender wins in 9 turns

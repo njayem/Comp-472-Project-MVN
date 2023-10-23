@@ -102,7 +102,21 @@ class Unit:
         amount = self.damage_table[self.type.value][target.type.value]
 
         with open(file_path, 'a') as file:
-            file.write(f"{amount}")
+            file.write(f"{amount}")    
+        print(f"{amount}", end=" ")
+
+        if target.health - amount < 0:
+            # if the value is negative then return the target's CURRENT health to be subtracted later
+            # from the target's health to equal 0 and die eventually
+            return target.health
+        # Otherwise return the amount of damage and subtract from CURRENT target health
+        return amount
+    
+    def damage_amount_2(self, target: Unit) -> int:
+        """How much can this unit damage another unit."""
+        
+        # calculate damage value 
+        amount = self.damage_table[self.type.value][target.type.value]
 
         if target.health - amount < 0:
             # if the value is negative then return the target's CURRENT health to be subtracted later
@@ -119,6 +133,20 @@ class Unit:
 
         with open(file_path, 'a') as file:
             file.write(f"{amount}")
+        print(f"{amount}", end=" ")
+
+        if target.health + amount > 9:
+            # if the value is >9 then return (9 - target's CURRENT health) to be added later
+            # to the target's health
+            return 9 - target.health
+        # Otherwise return the amount of repair and add to CURRENT target health
+        return amount
+    
+    def repair_amount_2(self, target: Unit) -> int:
+        """How much can this unit repair another unit."""
+        
+        # calculate repair value 
+        amount = self.repair_table[self.type.value][target.type.value]
 
         if target.health + amount > 9:
             # if the value is >9 then return (9 - target's CURRENT health) to be added later
@@ -268,7 +296,6 @@ class Stats:
     total_seconds: float = 0.0
     cumulative_evals: int = 0
     cumulative_evals_by_depth: dict[int, int] = field(default_factory=dict)
-    cumulative_percentage_evals_by_depth: float = 0.0
     average_branching_factor: float = 0.0
 ##############################################################################################################
 
@@ -283,6 +310,9 @@ class Game:
     stats: Stats = field(default_factory=Stats)
     _attacker_has_ai: bool = True
     _defender_has_ai: bool = True
+    cumulative_evals = 0
+    cumulative_candidate_moves = 0
+    cumulative_evals_by_depth = {} 
 
     def __post_init__(self):
         """Automatically called after class init to set up the default board state."""
@@ -507,6 +537,24 @@ class Game:
         with open(file_path, 'a') as file:
             file.write(
                 f"self-destruct at {coords.src} \nself-destructed for {total_damage} total damage\n")
+        print(f"self-destruct at {coords.src} \nself-destructed for {total_damage} total damage")
+        return
+    
+    def perform_self_destruct_2(self, unit_src: Unit, coords: CoordPair) -> Tuple[bool, str]:
+        """Kills off the unit performing the self-destruct, reduces the health of the 
+        surrounding units by 2 and removes any dead units from the board. WITHOUT PRINTING TO FILE"""
+        total_damage = 0
+        
+        #kill off src unit 
+        self.mod_health(coords.src, -9)
+
+        # reduces the health of the surrounding units by 2 
+        for surrounding_coord in coords.src.iter_range(1):
+            if self.get(surrounding_coord) is not None:
+                self.mod_health(surrounding_coord, -2)
+                self.remove_dead(surrounding_coord)
+                total_damage = total_damage + 2
+
         return
 
     def perform_attack(self, unit_src: Unit, unit_dst: Unit, coords: CoordPair) -> Tuple[bool, str]:
@@ -515,6 +563,7 @@ class Game:
         with open(file_path, 'a') as file:
             file.write(
                 f"attack from {coords.src} to {coords.dst} \ncombat damage: to source = ")
+        print(f"attack from {coords.src} to {coords.dst} \ncombat damage: to source = ", end=" ")
 
         # calculate damage and modify health value 
         damage = unit_dst.damage_amount(unit_src)
@@ -523,6 +572,7 @@ class Game:
 
         with open(file_path, 'a') as file:
             file.write(f", to target = ")
+        print(f", to target = ", end="")
 
         # calculate damage and modify health value 
         damage = unit_src.damage_amount(unit_dst)
@@ -531,6 +581,22 @@ class Game:
 
         with open(file_path, 'a') as file:
             file.write("\n")
+        print("")
+        return
+    
+    def perform_attack_2(self, unit_src: Unit, unit_dst: Unit, coords: CoordPair) -> Tuple[bool, str]:
+        """Allows the src unit to attack the target unit, decreasing the health of both units by a 
+        predetermined value defined in damage_table. If one of the units dies, it gets removed from the board. WITHOUT PRINTING TO FILE"""
+    
+        # calculate damage and modify health value 
+        damage = unit_dst.damage_amount_2(unit_src)
+        self.mod_health(coords.src, -damage)
+        self.remove_dead(coords.src)
+
+        # calculate damage and modify health value 
+        damage = unit_src.damage_amount_2(unit_dst)
+        self.mod_health(coords.dst, -damage)
+        self.remove_dead(coords.dst)
 
         return
 
@@ -539,13 +605,24 @@ class Game:
         predetermined value defined in repair_table. """
         with open(file_path, 'a') as file:
             file.write(f"repair from {coords.src} to {coords.dst} \nrepaired ")
-
+        print(f"repair from {coords.src} to {coords.dst} \nrepaired ", end="")
         # calculate repair and modify health value
         repair = unit_src.repair_amount(unit_dst)
         self.mod_health(coords.dst, repair)
 
         with open(file_path, 'a') as file:
             file.write(" health points \n")
+        print(" health points")
+        return
+    
+    def perform_repair_2(self, unit_src: Unit, unit_dst: Unit, coords: CoordPair) -> Tuple[bool, str]:
+        """Allows the src unit to repair the target unit, increasing the health of the target unit by a
+        predetermined value defined in repair_table. WITHOUT PRINTING TO FILE """
+
+        # calculate repair and modify health value
+        repair = unit_src.repair_amount_2(unit_dst)
+        self.mod_health(coords.dst, repair)
+
         return
 
     def perform_move(self, coords: CoordPair) -> Tuple[bool, str]:
@@ -569,7 +646,7 @@ class Game:
 
             with open(file_path, 'a') as file:
                 file.write(f"move from {coords.src} to {coords.dst}\n")
-
+            print(f"move from {coords.src} to {coords.dst}")
             return (True, "")
 
         elif type_of_move == "Attack":
@@ -586,6 +663,38 @@ class Game:
         else:
             with open(file_path, 'a') as file:
                 file.write(f"Invalid Move!\n")
+            
+            return (False, "Invalid Move")
+
+    def perform_move_2(self, coords: CoordPair) -> Tuple[bool, str]:
+        """Validate and perform a move expressed as a CoordPair. WITHOUT PRINTING TO FILE"""
+        # Get unit at source
+        unit_src = self.get(coords.src)
+        unit_dst = self.get(coords.dst)
+
+        # Get type of move 
+        type_of_move = self.type_of_move(unit_src, unit_dst, coords)
+
+        # once type of move to be played is determined, perform the move 
+        if type_of_move == "Move":
+            # Move logic
+            self.set(coords.dst, self.get(coords.src))
+            self.set(coords.src, None)
+
+            return (True, "")
+
+        elif type_of_move == "Attack":
+            self.perform_attack_2(unit_src, unit_dst, coords)
+            return (True, "")
+
+        elif type_of_move == "Self-Destruct":
+            self.perform_self_destruct_2(unit_src, coords)
+            return (True, "")
+
+        elif type_of_move == "Repair":
+            self.perform_repair_2(unit_src, unit_dst, coords)
+            return (True, "")
+        else:
             return (False, "Invalid Move")
 
     def next_turn(self):
@@ -598,7 +707,7 @@ class Game:
         dim = self.options.dim
         output = ""
         output += f"Next player: {self.next_player.name}\n"
-        output += f"Turns played: {self.turns_played}\n"
+        output += f"Turn #{self.turns_played}\n"
         coord = Coord()
         output += "\n   "
         for col in range(dim):
@@ -673,7 +782,7 @@ class Game:
         if mv is not None:
             (success, result) = self.perform_move(mv)
             if success:
-                print(f"Computer {self.next_player.name}: ", end='')
+                print(f"Computer {self.next_player.name}: ", end='\n')
                 print(result)
                 self.next_turn()
         return mv
@@ -688,21 +797,6 @@ class Game:
     def is_finished(self) -> bool:
         """Check if the game is over."""
         return self.has_winner() is not None
-
-    # def has_winner(self) -> Player | None:
-    #     """Check if the game is over and returns winner"""
-    #     if self.options.max_turns is not None and self.turns_played >= self.options.max_turns:
-    #         return Player.Defender
-    #     # gives win to defender in the case that both AIs die in the same move (Only happens when AI self-destructs and kills opponent AI)
-    #     elif (not self._attacker_has_ai) and (not self._defender_has_ai):
-    #         return Player.Defender
-    #     elif self._attacker_has_ai:
-    #         if self._defender_has_ai:
-    #             return None
-    #         else:
-    #             return Player.Attacker
-    #     elif self._defender_has_ai:
-    #         return Player.Defender
     
     def has_winner(self) -> Player | None:
         """Check if the game is over and returns winner"""
@@ -800,7 +894,7 @@ class Game:
             
             # if the current player can kill the adjacent enemy unit in one move, return True
             if coord_unit is not None and coord_unit.player != unit.player:
-                if unit.damage_amount(coord_unit) >= coord_unit.health:
+                if unit.damage_amount_2(coord_unit) >= coord_unit.health:
                     return True
         return False
     
@@ -815,7 +909,7 @@ class Game:
             
             # if the current player can get killed by the adjacent enemy unit in one move, return True
             if coord_unit is not None and coord_unit.player != unit.player:
-                if coord_unit.damage_amount(unit) >= unit.health:
+                if coord_unit.damage_amount_2(unit) >= unit.health:
                     return True
         return False
     
@@ -1005,10 +1099,10 @@ class Game:
     
     def minimax(self, move, depth, start_time, maximizing_player) -> int:
         """Implements the minimax algorithm. Returns the heuristic score of the best move for the current player."""
-        
+        Game.cumulative_evals += 1
         # create a copy of the game state and perform the given move 
         game_copy = self.clone ()
-        game_copy.perform_move(move)
+        game_copy.perform_move_2(move)
         
         # base case: if the depth is 0, return the heuristic score of the given move
         if depth == 0:
@@ -1028,8 +1122,14 @@ class Game:
             
             # only consider valid and non-None moves 
             valid_moves = [m for m in game_copy.move_candidates() if m is not None]
+            Game.cumulative_candidate_moves += len(valid_moves)
             
             for move in valid_moves:
+
+                if (self.options.max_depth - depth + 1) not in Game.cumulative_evals_by_depth:
+                    Game.cumulative_evals_by_depth[self.options.max_depth - depth + 1] = 1
+                else: 
+                    Game.cumulative_evals_by_depth[self.options.max_depth - depth + 1] += 1 
                 if move is not None and isinstance(move, CoordPair):   
                     # recursively evaluate heuristic score of the move
                     evaluated_heuristic_score = game_copy.minimax(move, depth - 1, start_time, False)
@@ -1050,6 +1150,10 @@ class Game:
             valid_moves = [m for m in game_copy.move_candidates() if m is not None]
             
             for move in valid_moves:
+                if (self.options.max_depth - depth + 1) not in Game.cumulative_evals_by_depth:
+                    Game.cumulative_evals_by_depth[self.options.max_depth - depth + 1] = 1
+                else: 
+                    Game.cumulative_evals_by_depth[self.options.max_depth - depth + 1] += 1
                 if move is not None and isinstance(move, CoordPair):       
                     # recursively evaluate heuristic score of the move
                     evaluated_heuristic_score = game_copy.minimax(move, depth - 1, start_time, True)
@@ -1088,10 +1192,10 @@ class Game:
     
     def alpha_beta(self, move, depth, start_time, alpha, beta, maximizing_player):
         """Implements the alpha-beta pruning algorithm. Returns the heuristic score of the best move for the current player."""
-        
+        Game.cumulative_evals += 1
         # create a copy of the game state and perform the given move 
         game_copy = self.clone ()
-        game_copy.perform_move(move)
+        game_copy.perform_move_2(move)
         
         # base case: if the depth is 0, return the heuristic score of the given move
         if depth == 0:
@@ -1111,7 +1215,12 @@ class Game:
             
             # only consider valid and non-None moves
             valid_moves = [m for m in game_copy.move_candidates() if m is not None]
+            Game.cumulative_candidate_moves += len(valid_moves)
             for move in valid_moves:
+                if (self.options.max_depth - depth + 1) not in Game.cumulative_evals_by_depth:
+                    Game.cumulative_evals_by_depth[self.options.max_depth - depth + 1] = 1
+                else: 
+                    Game.cumulative_evals_by_depth[self.options.max_depth - depth + 1] += 1
                 if move is not None and isinstance(move, CoordPair):
                  
                     # recursively evaluate heuristic score of the move
@@ -1136,6 +1245,10 @@ class Game:
             # only consider valid and non-None moves
             valid_moves = [m for m in game_copy.move_candidates() if m is not None]
             for move in valid_moves:
+                if (self.options.max_depth - depth + 1) not in Game.cumulative_evals_by_depth:
+                    Game.cumulative_evals_by_depth[self.options.max_depth - depth + 1] = 1
+                else: 
+                    Game.cumulative_evals_by_depth[self.options.max_depth - depth + 1] += 1
                 if move is not None and isinstance(move, CoordPair):
                     
                     # recursively evaluate heuristic score of the move
@@ -1178,7 +1291,7 @@ class Game:
         return (best_evaluation, best_evaluated_move)
                 
     def suggest_move(self) -> CoordPair | None:
-        """Suggest the next move using minimax alpha beta. TODO: REPLACE RANDOM_MOVE WITH PROPER GAME LOGIC!!!"""
+        """Suggest the next move using minimax alpha beta."""
         start_time = datetime.datetime.now()
         
         # execute alpha-beta or minimax algorithm depending on the option selected
@@ -1193,20 +1306,48 @@ class Game:
             
         elapsed_seconds = (datetime.datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
-        print(f"Heuristic score: {score}")
+        # print heuristic score to terminal and file
+        print(f"Heuristic score: {score}\n")
+        with open(file_path, 'a') as file:
+            file.write(f"Heuristic score: {score}\n")
         # print(f"Average recursive depth: {avg_depth:0.1f}")
-        print(f"Cumulative evals by depth", end='')
-        for k in sorted(self.stats.cumulative_evals_by_depth.keys()):
-            print(f"{k}:{self.stats.cumulative_evals_by_depth[k]} ", end='')
+        # print cumulative evals by depth to terminal and file
+        self.stats.cumulative_evals_by_depth = Game.cumulative_evals_by_depth
+        print(f"Cumulative evals by depth ", end='')
+        with open(file_path, 'a') as file:
+            file.write(f"Cumulative evals by depth: ")
+            for k in sorted(self.stats.cumulative_evals_by_depth.keys()):
+                print(f"{k}:{self.stats.cumulative_evals_by_depth[k]} ", end='')
+                file.write(f"{k}={self.stats.cumulative_evals_by_depth[k]} ")
+            file.write("\n")    
         # total_evals = sum(self.stats.cumulative_evals_by_depth.values())
         # if self.stats.total_seconds > 0:
         #     print(
         #         f"Eval perf.: {total_evals/self.stats.total_seconds/1000:0.1f}k/s")
-        print(f"Cumulative evals: {self.stats.cumulative_evals}")
-        print(f"Cumulative % evals by depth: {self.stats.cumulative_percentage_evals_by_depth}")
-        print(f"Average branching factor: {self.stats.average_branching_factor}")
+        # the number of states evaluated by the heuristic function since the beginning of the game
+        self.stats.cumulative_evals = Game.cumulative_evals
+        print(f"\nCumulative evals: {self.stats.cumulative_evals}")
+        with open(file_path, 'a') as file:
+            file.write(f"\nCumulative evals: {self.stats.cumulative_evals}\n")
+        # print cumulative % evals by depth to terminal and file
+        print(f"Cumulative % evals by depth: ", end='')
+        with open(file_path, 'a') as file:
+            file.write(f"Cumulative % evals by depth: ")
+            for k in sorted(self.stats.cumulative_evals_by_depth.keys()):
+                print(f"{k}:{round((self.stats.cumulative_evals_by_depth[k]/Game.cumulative_evals)*100,2)}%", end=" ")
+                file.write(f"{k}={round((self.stats.cumulative_evals_by_depth[k]/Game.cumulative_evals)*100, 2)}% ")
+            file.write("\n")    
+        
+        # print average branching factor to terminal and file
+        self.stats.average_branching_factor = round(Game.cumulative_candidate_moves/Game.cumulative_evals , 1)
+        print(f"\nAverage branching factor: {self.stats.average_branching_factor}")
+        with open(file_path, 'a') as file:
+            file.write(f"Average branching factor: {self.stats.average_branching_factor}\n")
         print()
-        print(f"Time for this action: {elapsed_seconds:0.1f}s")
+        # print time for each action to terminal and file
+        with open(file_path, 'a') as file:
+            file.write(f"Time for this action: {elapsed_seconds:0.3f} sec\n")
+        print(f"Time for this action: {elapsed_seconds:0.3f} sec\n\n\n")
         return move
 
     def post_move_to_broker(self, move: CoordPair):
@@ -1270,10 +1411,17 @@ def get_user_input():
     max_turns = int(input("Enter max turns: "))
     heuristic = input("Enter heuristic name (e0|e1|e2): ")
     alpha_beta_option = input("Enter alpha-beta option (on|off): ")
+    alpha_beta_option_bool = None
 
+    if alpha_beta_option is not None:
+       if alpha_beta_option.lower().strip() == "on": 
+            alpha_beta_option_bool = True
+       else: 
+           alpha_beta_option_bool = False
+           
     # create the name for the output file
     global file_path
-    file_path = f"gameTrace-b-t-{max_turns}.txt"
+    file_path = f"gameTrace-{alpha_beta_option_bool}-{int(max_time)}-{max_turns}.txt"
 
     return game_type, max_time, max_depth, max_turns, heuristic, alpha_beta_option
 
@@ -1337,7 +1485,7 @@ def main():
 
     # append initial configuration to the output trace file
     with open(file_path, 'a') as file:
-        file.write(f"-----------INITIAL CONFIGURATION-----------\n")
+        file.write(f"-----------INITIAL CONFIGURATION-----------\n\n")
 
     # the main game loop
     while True:
@@ -1350,7 +1498,7 @@ def main():
         if winner is not None:
             print(f"----------------Game Over----------------\n\n{winner.name} wins in {game.turns_played} turns\n")
             with open(file_path, 'a') as file:
-                file.write(f"----------------Game Over----------------\n")
+                file.write(f"----------------Game Over----------------\n\n")
                 file.write(
                     f"{winner.name} wins in {game.turns_played} turns\n")
             break
