@@ -935,7 +935,7 @@ class Game:
         return min_distance
     
     def multiplier(self, src, unit) -> int:
-        """"Returns an int by which the value should be multiplied if the unit is in an offensive postion."""
+        """"Returns an int by which the value should be multiplied if the unit is in an offensive position."""
         multiplier = 0
          
         # if the unit can strike to kill an opponent, this is a good move
@@ -960,8 +960,8 @@ class Game:
         Returns the heuristic score for current unit configuration. Offensive Heuristic.
         
         - Heuristic score is calculated using weighted values for each unit type. 
-        - The heuristic score is multiplied by a multiplier value, depedning on how advantageous 
-          the move is in terms of being able to kill an oppent piece, damage an oppennt piece, or avoid being 
+        - The heuristic score is multiplied by a multiplier value, depending on how advantageous 
+          the move is in terms of being able to kill an opponent piece, damage an opponent piece, or avoid being 
           killed by an opponent piece.
         - Heuristic also disfavours moves that can result in the current player's AI and Tech/Virus dying or self-destructing.
         """
@@ -1291,7 +1291,7 @@ class Game:
         return (best_evaluation, best_evaluated_move)
                 
     def suggest_move(self) -> CoordPair | None:
-        """Suggest the next move using minimax alpha beta."""
+        """Suggest the next move using minimax or alpha beta."""
         start_time = datetime.datetime.now()
         
         # execute alpha-beta or minimax algorithm depending on the option selected
